@@ -74,3 +74,156 @@ const NUM_ROUNDS = DECK_SIZE / DRAFT_SIZE; // 12
  * @property {number} round
  */
 
+/**
+ * Score a single grid using flood-fill to find connected terrain areas and count crowns. Returns total score.
+ * @memberOf KingdominoGame
+ * @param {Grid} grid
+ * @returns {number} Total score
+ */
+export function scoreGrid(grid) {
+    const size = grid.length;
+    const visited = Array.from({length: size}, () => Array(size).fill(false)); // Tracks the cell, with False as default value
+    let total = 0;
+
+    for (let row = 0; row < size; row++) {
+        for (let col = 0; col < size; col++) {
+            if (visited[row][col])continue;
+            const terrain = grid[row][col].terrain;
+            if (terrain === "empty" || terrain === "castle") {
+                visited[row][col] = true;
+                continue 
+            }
+            const region =  floodFillRegion(grid, row, col, visited); // Get all connected cells of the same terrain
+            const tiles = region.length;
+            const crowns = region.reduce(
+                (sum,[r,c]) => sum + grid[r][c].crowns,
+                0
+            );
+            total += tiles * crowns; // Score for this region is tiles × crowns
+        }
+    }
+    return total;
+}
+//Function to perform flood-fill and return all connected cells of the same terrain type
+function floodFillRegion(grid, startRow, startCol, visited) {
+    const size = grid.length;
+    const terrain = grid[startRow][startCol].terrain;
+    const region = [];
+    const stack = [[startRow, startCol]];
+
+    while (stack.length > 0){
+        const [row, col] = stack.pop();
+        if (row < 0 || row >= size || col < 0 || col >= size) continue; // Out of bounds
+        if (visited[row][col]) continue; // Already visited
+        if (grid[row][col].terrain !== terrain) continue; // Different terrain
+
+        visited[row][col] = true;
+        region.push([row, col]); // Add to current region
+        stack.push([row,col]); // Check neighbors
+        stack.push([row+1,col]);
+        stack.push([row-1,col]);
+        stack.push([row,col+1]);
+        stack.push([row,col-1]);
+    }
+    return region;
+}
+
+/**
+ * Find all legal placements of a domino on the given grid 
+ * @memberof KingdominoGame
+ * @param {Grid} grid
+ * @param {Domino} domino
+ * @return {Placement[]} Array of legal placements
+ */
+export function findLegalPlacements(grid, domino) {
+    const placements = [];
+    const size = grid.length;
+
+    for (let row = 0; row < size; row++){
+        for (let col = 0; col < size; col++){
+            for (const orientation of ["horizontal", "vertical"]){
+                for (const flipped of [false, true]){
+                    const placement = {row, col, orientation, flipped};//
+                    if (isLegalPlacement(grid, domino, placement)){
+                        placements.push(placement);
+                    }
+                }
+             }
+        }
+    }
+    return placements;
+}
+
+// ==== Private helpers ====
+
+// Returns the state of legality - true or false, based on the rules of the placement
+function isLegalPlacement(grid, domino, placement){
+    const placed = getPlacedCells(domino, placement);
+    return cellsInBounds(placed, grid.length)
+        && cellsAreEmpty(grid, placed)
+        && touchesMatchingTerrain(grid, placed)
+        && fitsInKingdom(grid, placed);
+}
+
+function getPlacedCells(domino, {row, col, orientation, flipped}){
+    const { row, col, orientation, flipped } = placement;
+    const [firstHalf, secondHalf] = flipped
+        ? [domino.right, domino.left]
+        : [domino.left, domino.right];
+    
+    if (orientation === "horizontal"){
+        return [
+            {row, col, half:firstHalf},
+            {row, col: col + 1, half:secondHalf}
+        ];
+    }
+    // vertical
+    return [
+        {row, col, half:firstHalf},
+        {row: row + 1, col, half:secondHalf}
+    ];
+}
+
+function cellsInBounds(cells, size){
+    return placed.every(({row, col}) =>
+        row >= 0 && row < size && col >= 0 && col < size
+    );  
+}
+
+function cellsAreEmpty(grid, cells){
+    return placed.every(({row, col}) => grid[row][col].terrain === "empty");
+}
+
+function touchesMatchingTerrain(grid, cells){
+    const size = grid.length;
+    const itSelf = (r, c) => placed.some(package.row === r && p.col === c);
+
+    return placed.some(({row,col,half}) => {
+        const neighbors = [
+            [row - 1, col], [row + 1, col],
+            [row, col - 1], [row, col + 1]
+        ];
+        return neighbors.some(([r,c]) => {
+            if (r < 0 || r >= size || c < 0 || c >= size) return false; // Out of bounds
+            if (itSelf(r,c)) return false; // Don't count the other half of the same domino
+            const terrain = grid[r][c].terrain;
+            return terrain === "castle" || terrain === half.terrain;
+        });
+    });
+}
+
+function fitsInKingdomBox(grid, placed) {
+    const allOccupied = [...placed.map(p => ({ row: p.row, col: p.col }))];
+    for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid.length; c++) {
+            if (grid[r][c].terrain !== "empty") {
+                allOccupied.push({ row: r, col: c });
+            }
+        }
+    }
+    const rows = allOccupied.map(c => c.row);
+    const cols = allOccupied.map(c => c.col);
+    const rowSpan = Math.max(...rows) - Math.min(...rows);
+    const colSpan = Math.max(...cols) - Math.min(...cols);
+    return rowSpan < KINGDOM_SIZE && colSpan < KINGDOM_SIZE;
+}
