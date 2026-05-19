@@ -168,9 +168,10 @@ function isLegalPlacement(grid, domino, placement){
 function getPlacedCells(domino, {row, col, orientation, flipped}){
     const { row, col, orientation, flipped } = placement;
     const [firstHalf, secondHalf] = flipped
-        ? [domino.right, domino.left]
-        : [domino.left, domino.right];
+        ? [domino.right, domino.left] // If flipped, the "right" half is placed first at (row, col), and the "left" half is placed adjacent to it
+        : [domino.left, domino.right]; // Normal orientation, "left" half is at (row, col) and "right" half is adjacent
     
+    //Coordinates of the two halves based on orientation
     if (orientation === "horizontal"){
         return [
             {row, col, half:firstHalf},
@@ -184,12 +185,14 @@ function getPlacedCells(domino, {row, col, orientation, flipped}){
     ];
 }
 
+// Check if all placed cells are within the bounds of the grid
 function cellsInBounds(cells, size){
     return placed.every(({row, col}) =>
         row >= 0 && row < size && col >= 0 && col < size
     );  
 }
 
+// Check if any of the placed cells overlap with non-empty terrain
 function cellsAreEmpty(grid, cells){
     return placed.every(({row, col}) => grid[row][col].terrain === "empty");
 }
@@ -206,12 +209,13 @@ function touchesMatchingTerrain(grid, cells){
         return neighbors.some(([r,c]) => {
             if (r < 0 || r >= size || c < 0 || c >= size) return false; // Out of bounds
             if (itSelf(r,c)) return false; // Don't count the other half of the same domino
-            const terrain = grid[r][c].terrain;
+            const terrain = grid[r][c].terrain; //matching terrain is either castle or same as the half being placed
             return terrain === "castle" || terrain === half.terrain;
         });
     });
 }
 
+// Check if the bounding box of all occupied cells (existing terrain + new placement) fits within KINGDOM_SIZE
 function fitsInKingdomBox(grid, placed) {
     const allOccupied = [...placed.map(p => ({ row: p.row, col: p.col }))];
     for (let r = 0; r < grid.length; r++) {
@@ -227,3 +231,12 @@ function fitsInKingdomBox(grid, placed) {
     const colSpan = Math.max(...cols) - Math.min(...cols);
     return rowSpan < KINGDOM_SIZE && colSpan < KINGDOM_SIZE;
 }
+
+
+/**
+ * Create a new game state.
+ * @memberof KingdominoGame
+ * @param {number} numPlayers - Must be 2 in this implementation.
+ * @param {() => number} [rng=Math.random] - Optional RNG; pass a fake for deterministic tests.
+ * @returns {GameState}
+ */
