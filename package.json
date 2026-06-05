@@ -1,0 +1,16 @@
+{
+  "name": "computing-2-submission",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "web-app/Module.js",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ramda": "^0.32.0"
+  },
+  "devDependencies": {
+    "docdash": "^2.0.2",
+    "mocha": "^11.7.5"
+  }
+}
