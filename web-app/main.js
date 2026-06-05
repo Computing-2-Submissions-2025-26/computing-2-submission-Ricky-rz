@@ -18,7 +18,7 @@ import {
     scoreGrid,
     isValidPlacement,
     findLegalPlacements,
-} from './game-module.js';
+} from './game-module1.js';
 
 // ─── Module-level mutable state ───────────────────────────────────────────────
 
