@@ -189,3 +189,66 @@ function cellsInBounds(cells) {
     );
 }
 
+/**
+ * checks if cells are empty
+ * @param {Grid} grid
+ * @param {{row: number, col: number}[]} cells
+ * @returns {boolean}
+ */
+function cellsAreEmpty(grid, cells) {
+    return cells.every(
+        ({row, col}) =>
+            grid[row][col].terrain === "empty"
+    )
+}
+
+/**
+* Checks if at least one half-tile is orthogonally adjacent to the
+* castle or to an existing cell of matching terrain.
+* The other half of the same domino is excluded from adjacency checks.
+* @param {Grid} grid
+* @param {{row: number, col: number, half: Cell}[]} cells
+* @returns {boolean}
+*/
+function touchesMatchingTerrain(grid, cells) {
+    return cells.some(({ row, col, half }) => {
+        const neighbours = [
+            { row: row - 1, col },
+            { row: row + 1, col },
+            { row, col: col - 1 },
+            { row, col: col + 1 },
+        ];
+        return neighbours.some(({ row: r, col: c }) => {
+            if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) {
+                return false;// Out of bounds
+            }
+            if (cells.some(cell => cell.row === r && cell.col === c)) {
+                return false;// Skip the other half of the same domino
+            }
+            const t = grid[r][c].terrain;
+            return t === "castle" || t === half.terrain;
+        });
+    });
+}
+
+/**
+   * Checks if all occupied cells fit within a 5x5 bounding box.
+   * @param {Grid} grid
+   * @param {{row: number, col: number}[]} cells
+   * @returns {boolean}
+   */
+function fitsInKingdom(grid, cells) {
+    const occupied = [...cells.map(({ row, col }) => ({ row, col }))];
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+        if(grid[r][c].terrain !== "empty"){
+            occupied.push({row: r, col: c});
+            }
+    }}
+    const row_min = Math.min(...occupied.map(({row}) => row));
+    const row_max = Math.max(...occupied.map(({row}) => row));
+    const col_min = Math.min(...occupied.map(({col}) => col));
+    const col_max = Math.max(...occupied.map(({col}) => col));
+    return (row_max - row_min) < KINGDOM_SIZE &&
+        (col_max - col_min) < KINGDOM_SIZE;
+}
