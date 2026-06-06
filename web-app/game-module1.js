@@ -155,17 +155,37 @@ function makeGrid() {
 }
 
 /**
- * Place a domino on the grid, returning a new grid object with the domino's cells added.
- * @param {Grid} grid - The grid to place on
- * @param {Domino} domino - The domino to place
- * @param {Placement} placement - Where and how to place the domino
- * @returns {Grid} A new grid with the domino placed
+ * takes (domino, placement) and returns two row, col and half
+ * @returns {{row: number, col: number, half: "left"|"right"}[]}
+ * @param {Domino} domino
+ * @param {number} orientation
+ * @param {Grid} grid
+ * 0,1,2,3 for orientation and left or right for half
  */
-function placeDomino(row, col, orientation, flipped, grid, domino) {
-    for (const [half, cell] of [["left", domino.left], ["right", domino.right]]) {
-        const r = row + (orientation === "vertical" && half === "right" ? 1 : 0);
-        const c = col + (orientation === "horizontal" && half === "right" ? 1 : 0);
-        if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) {
-    }
-    }
+ function getPlacedCells(domino, row, col, orientation) {
+      let r, c;
+
+      if (orientation === 0) { r = row;   c = col+1; }
+      if (orientation === 1) { r = row+1; c = col;   }
+      if (orientation === 2) { r = row;   c = col-1; }
+      if (orientation === 3) { r = row-1; c = col;   }
+
+      return [
+          { row: row, col: col, half: domino.left },
+          { row: r,  col: c,  half: domino.right }
+      ];
+  }
+
+/**
+* Checks if both cells are within the 9x9 grid.
+* @param {{row: number, col: number}[]} cells
+* @returns {boolean}
+*/
+function cellsInBounds(cells) {
+    return cells.every(
+        ({row, col}) =>
+            row >= 0 && row < GRID_SIZE &&
+            col >= 0 && col < GRID_SIZE
+    );
 }
+
