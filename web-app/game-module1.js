@@ -165,7 +165,7 @@ function placeDomino(row, col, orientation, flipped, grid, domino) {
     for (const [half, cell] of [["left", domino.left], ["right", domino.right]]) {
         const r = row + (orientation === "vertical" && half === "right" ? 1 : 0);
         const c = col + (orientation === "horizontal" && half === "right" ? 1 : 0);
-        
+        if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) {
     }
     }
 }
