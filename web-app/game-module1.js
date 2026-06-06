@@ -252,3 +252,24 @@ function fitsInKingdom(grid, cells) {
     return (row_max - row_min) < KINGDOM_SIZE &&
         (col_max - col_min) < KINGDOM_SIZE;
 }
+
+/**
+ * scoring engine, calculates the score of a grid by finding connected
+ * components of matching terrain and multiplying their size by their crowns
+ * @returns {number}
+ * @param {Grid} grid
+ */
+function floodFillRegion(grid, startRow, startCol, visited) {
+      const terrain = grid[startRow][startCol].terrain;
+      const region  = [];
+      const stack   = [[startRow, startCol]];
+
+      while (stack.length > 0) {
+          const [row, col] = stack.pop();
+          // three checks — skip if any fail
+          // mark visited
+          // add to region
+          // push four neighbours
+      }
+      return region;
+  }
