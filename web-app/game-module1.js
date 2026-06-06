@@ -123,7 +123,7 @@ const ALL_DOMINOES = Object.freeze([
     { id: 24, number: 24, left: { terrain: "forest", crowns: 1 }, right: { terrain: "wheat",  crowns: 0 } },
 ]);
 
-// ─── Private helpers ──────────────────────────────────────────────────────────
+// ─── Private helpers ───────────────────────────────────────────────────────────
 
 /**
  * Fisher-Yates shuffle; will iterate backwards through the input array 
@@ -260,16 +260,81 @@ function fitsInKingdom(grid, cells) {
  * @param {Grid} grid
  */
 function floodFillRegion(grid, startRow, startCol, visited) {
-      const terrain = grid[startRow][startCol].terrain;
-      const region  = [];
-      const stack   = [[startRow, startCol]];
+    const terrain = grid[startRow][startCol].terrain;
+    const region  = [];
+    const stack   = [[startRow, startCol]];
+    while (stack.length > 0) {
+        const [row, col] = stack.pop();
 
-      while (stack.length > 0) {
-          const [row, col] = stack.pop();
-          // three checks — skip if any fail
-          // mark visited
-          // add to region
-          // push four neighbours
-      }
-      return region;
-  }
+          // 1. bounds check — must be first
+        if (row < 0 || row >= GRID_SIZE ||
+             col < 0 || col >= GRID_SIZE) { continue; }
+          // 2. already visited?
+        if (visited[row][col]) { continue; }
+          // 3. wrong terrain?
+        if (grid[row][col].terrain !== terrain) { continue; }
+
+          // mark, collect, push neighbours
+        visited[row][col] = true;
+        region.push(grid[row][col]);
+
+        stack.push([row - 1, col]);
+        stack.push([row + 1, col]);
+        stack.push([row, col - 1]);
+        stack.push([row, col + 1]);
+    }
+    return region;
+}
+
+// ─── public API functions ──────────────────────────────────────────────────────
+
+
+/**
+* @param {Grid} grid
+* @returns {number}
+*/
+export function scoreGrid(grid) {
+    const visited = Array.from({length: GRID_SIZE}, () =>
+        Array.from({length: GRID_SIZE}, () => false))
+    let score = 0;
+    for (let row = 0; row < GRID_SIZE; row++) {
+        for (let col = 0; col < GRID_SIZE; col++) {
+            if (visited[row][col]) { continue; }
+            const terrain = grid[row][col].terrain;
+            if (terrain === "empty" || terrain === "castle") { continue; }
+            const region = floodFillRegion(grid, row, col, visited);
+            const crowns = region.reduce(
+                (sum, cell) => sum + cell.crowns, 0
+            );
+            score += region.length * crowns;
+        }
+    }
+    return score;
+}
+
+/**
+ * Is the placement valid according to the game rules?
+ * @param {Grid} grid
+ * @param {Domino} domino
+ * @param {number} row
+ * @param {number} col
+ * @param {number} orientation 0,1,2,3 for orientation and left or right for half
+ * @return {boolean}
+ */
+export function isValidPlacement(grid, domino, row, col, orientation) {
+    const cells = getPlacedCells(domino, row, col, orientation);
+    return cellsInBounds(cells) &&
+        cellsAreEmpty(grid, cells) &&
+        touchesMatchingTerrain(grid, cells) &&
+        fitsInKingdom(grid, cells);
+}
+
+/**find valid placements for a given domino and grid
+ * @returns {{row: number, col: number, orientation: number}[]}
+ * @param {Grid} grid
+ * @param {Domino} domino
+ * @param {number} orientation 0,1,2,3 for orientation and left or right for half
+ * @return {boolean}
+ */
+export function findValidPlacements(grid, domino)
+
