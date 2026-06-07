@@ -329,23 +329,38 @@ export function isValidPlacement(grid, domino, row, col, orientation) {
         fitsInKingdom(grid, cells);
 }
 
-  /**
-   * Returns every legal placement for `domino` on `grid`.
-   * @param {Grid} grid
-   * @param {Domino} domino
-   * @returns {{row: number, col: number, orientation: number}[]}
-   */
-  function findLegalPlacements(grid, domino) {
+/**
+* Returns every legal placement for `domino` on `grid` for each orientation.
+* @param {Grid} grid
+* @param {Domino} domino
+* @param {number} [orientation] 0-3; omit to chek all orientations
+* @returns {{row: number, col: number, orientation: number}[]}
+*/
+export function findLegalPlacements(grid, domino, orientation) {
+    const orientations = orientation !== undefined
+        ?[orientation]
+        :[0, 1, 2, 3];
+    const results = []
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for(let c = 0; c < GRID_SIZE; c++) {
+            for (const o of orientations) {
+                if(isValidPlacement(grid, domino, r, c, o)) {
+                    results.push({row: r, col: c, orientation: o
+                    });
+                }
+            }
+        }
+    }
+    return results;
+}
 
-  }
-
-  /**
-   * Draws the next DRAFT_SIZE dominoes from the deck, sorts them by number,
-   * and wraps each in a DraftSlot with claimedBy: null.
-   * @param {Domino[]} deck
-   * @returns {{ slots: DraftSlot[], remaining: Domino[] }}
-   */
-  function getNextDraft(deck) {
+/**
+* Draws the next DRAFT_SIZE dominoes from the deck, sorts them by number,
+* and wraps each in a DraftSlot with claimedBy: null.
+* @param {Domino[]} deck
+* @returns {{ slots: DraftSlot[], remaining: Domino[] }}
+*/
+function getNextDraft(deck) {
 
   }
 
