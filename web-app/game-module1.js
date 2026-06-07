@@ -329,12 +329,57 @@ export function isValidPlacement(grid, domino, row, col, orientation) {
         fitsInKingdom(grid, cells);
 }
 
-/**find valid placements for a given domino and grid
- * @returns {{row: number, col: number, orientation: number}[]}
- * @param {Grid} grid
- * @param {Domino} domino
- * @param {number} orientation 0,1,2,3 for orientation and left or right for half
- * @return {boolean}
- */
-export function findValidPlacements(grid, domino)
+  /**
+   * Returns every legal placement for `domino` on `grid`.
+   * @param {Grid} grid
+   * @param {Domino} domino
+   * @returns {{row: number, col: number, orientation: number}[]}
+   */
+  function findLegalPlacements(grid, domino) {
 
+  }
+
+  /**
+   * Draws the next DRAFT_SIZE dominoes from the deck, sorts them by number,
+   * and wraps each in a DraftSlot with claimedBy: null.
+   * @param {Domino[]} deck
+   * @returns {{ slots: DraftSlot[], remaining: Domino[] }}
+   */
+  function getNextDraft(deck) {
+
+  }
+
+  /**
+   * Builds the starting GameState for a 2-player game.
+   * Shuffles the deck, draws the first nextDraft, and sets phase to "first-claim".
+   * @returns {GameState}
+   */
+  function createInitialState() {
+
+  }
+
+  /**
+   * Records that `playerId` has claimed slot `slotIndex` from `state.nextDraft`.
+   * Throws if the slot does not exist or is already claimed.
+   * When all slots are claimed, advances activePlayer to whoever claimed slot 0.
+   * @param {GameState} state
+   * @param {number} playerId
+   * @param {number} slotIndex
+   * @returns {GameState}
+   */
+  function claimDomino(state, playerId, slotIndex) {
+
+  }
+
+  /**
+   * Places the active player's held domino onto their grid (or discards it if
+   * `placement` is null), then advances the game to the next player/phase.
+   * Throws if the player has no held domino or the placement is invalid.
+   * @param {GameState} state
+   * @param {number} playerId
+   * @param {{row: number, col: number, orientation: number}|null} placement
+   * @returns {GameState}
+   */
+  function placeDomino(state, playerId, placement) {
+
+  }
