@@ -54,6 +54,7 @@ const DECK_SIZE    = 24; // 2-player half-deck (tiles 1–24)
  * @property {number}      id            - Index into `players[]` (0 or 1)
  * @property {Grid}        grid          - This player's 9×9 kingdom
  * @property {Domino|null} claimedDomino - Held domino waiting to be placed, or `null`
+ * @property {boolean}     hasPlaced - true when the domino is placed this round
  */
 
 /**
@@ -65,7 +66,7 @@ const DECK_SIZE    = 24; // 2-player half-deck (tiles 1–24)
  */
 
 /**
- * @typedef {"first-claim"|"place-and-claim"|"final-place"|"game-over"} Phase
+ * @typedef {"first-claim"|"placing"|"final-place"|"game-over"} Phase
  *
  * Phase transition diagram:
  * ```
@@ -88,12 +89,12 @@ const DECK_SIZE    = 24; // 2-player half-deck (tiles 1–24)
  * @property {DraftSlot[]} currentDraft  - Sorted ascending by `domino.number`; players place from these
  * @property {DraftSlot[]} nextDraft     - Sorted ascending by `domino.number`; players claim from these
  * @property {Domino[]}    deck          - Remaining shuffled dominoes not yet drawn
- * @property {number}      activePlayer  - Index into `players[]` whose turn it is
  * @property {Phase}       phase         - Current phase of the game
  * @property {number}      round         - 1-based round counter (1–12)
+ * @property {number}      firstClaimer  - pl;ayerId who picks first this round
  */
 
-// ─── Domino deck data (official 2-player tile set) ────────────────────────────
+// ─── Domino deck data (official 2-player tile set) ───────────────────────
 
 /** @type {Readonly<Domino[]>} */
 const ALL_DOMINOES = Object.freeze([
@@ -360,33 +361,67 @@ export function findLegalPlacements(grid, domino, orientation) {
 * @param {Domino[]} deck
 * @returns {{ slots: DraftSlot[], remaining: Domino[] }}
 */
-function getNextDraft(deck) {
+export function getNextDraft(deck) {
+    const drawn = deck.slice(0, DRAFT_SIZE).sort((a, b) => a.number - b.number);
+    const remain = deck.slice(DRAFT_SIZE);
+    const slots = drawn.map(domino => ({domino, claimedBy: null}));
+    return {slots, remain};
+  }
+
+/**
+* Builds the starting GameState for a 2-player game.
+* Shuffles the deck, draws the first nextDraft, and sets phase to "first-claim".
+* @returns {GameState}
+*/
+export function createInitialState() {
+    const deck = shuffle(ALL_DOMINOES);
+    const {slots, remaining} = getNextDraft(deck);
+    return {
+        players: [
+            { id: 0, grid: makeGrid(), claimedDomino: null, hasPlaced: false},
+            { id: 1, grid: makeGrid(), claimedDomino: null, hasPlaced: false},
+        ],
+        currentDraft: [],
+        nextDraft: slots,
+        deck: remaining,
+        havePlaced: false,
+        phase: "first-claim",
+        round: 1,
+        firstClaimer: Math.floor(Math.random() * 2)
+    };
+
+}
+
+/**
+* Active player claims a slot; thge other player is auto-assigned
+* @param {GameState} state
+* @param {number} playerId
+* @param {number} slotIndex 0 or 1
+* @returns {GameState}
+*/
+export function claimDomino(state, playerId, slotIndex) {
+    const myDomino = state.nextDraft[slotIndex].domino;
+    const theirdomino = state.nextDraft[1 - slotIndex].domino;
+    const nextFirstCLaim = myDomino.number < theirdomino.number
+        ? playerId
+        : 1 - playerId;
+    return {
+        players: [
+            {... state.player[playerId], claimedDomino: myDomino, hasPlaced: false},
+            {... state.player[1 - playerId], claimedDomino: theirdomino, hasPlaced: false},
+        ],
+        currentDraft: [],
+        nextDraft: [],
+        deck: state.deck,
+        havePlaced: false,
+        phase: "placing",
+        round: state.round,
+        firstClaimer: nextFirstCLaim
+    }
 
   }
 
-  /**
-   * Builds the starting GameState for a 2-player game.
-   * Shuffles the deck, draws the first nextDraft, and sets phase to "first-claim".
-   * @returns {GameState}
-   */
-  function createInitialState() {
-
-  }
-
-  /**
-   * Records that `playerId` has claimed slot `slotIndex` from `state.nextDraft`.
-   * Throws if the slot does not exist or is already claimed.
-   * When all slots are claimed, advances activePlayer to whoever claimed slot 0.
-   * @param {GameState} state
-   * @param {number} playerId
-   * @param {number} slotIndex
-   * @returns {GameState}
-   */
-  function claimDomino(state, playerId, slotIndex) {
-
-  }
-
-  /**
+/**
    * Places the active player's held domino onto their grid (or discards it if
    * `placement` is null), then advances the game to the next player/phase.
    * Throws if the player has no held domino or the placement is invalid.
@@ -395,6 +430,48 @@ function getNextDraft(deck) {
    * @param {{row: number, col: number, orientation: number}|null} placement
    * @returns {GameState}
    */
-  function placeDomino(state, playerId, placement) {
+export function placeDomino(state, playerId, placement) {
+    const domino = state.players[playerId].claimedDomino;
+    const grid   = state.players[playerId].grid;
 
+    if (domino === null) {
+        throw new Error("No domino to place");
+    }
+
+    let newGrid;
+    if (placement === null) {
+        newGrid = grid;
+    } else {
+        const { row, col, orientation } = placement;
+        if (!isValidPlacement(grid, domino, row, col, orientation)) {
+            throw new Error("Invalid placement");
+        }
+        const cells = getPlacedCells(domino, row, col, orientation);
+        newGrid = grid.map((rowArr, r) =>
+            rowArr.map((cell, c) => {
+                const placed = cells.find(p => p.row === r && p.col === c);
+                return placed ? placed.half : cell;
+            })
+        );
+    }
+
+    return {
+          ...state,
+          players: state.players.map(p =>
+              p.id === playerId
+                  ? { ...p, grid: newGrid, claimedDomino: null, hasPlaced: true}
+                  : p
+          ),
+      };
   }
+
+/**
+* Advances the game to the next round after both players have placed.
+* Draws a fresh nextDraft, resets hasPlaced, increments round.
+* Transitions to "final-place" when deck empties, "game-over" after final-place.
+* @param {GameState} state
+* @returns {GameState}
+*/
+export function advanceRound(state) {
+    
+}
