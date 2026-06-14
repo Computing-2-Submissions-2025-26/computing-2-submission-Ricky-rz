@@ -375,7 +375,7 @@ export function getNextDraft(deck) {
 */
 export function createInitialState() {
     const deck = shuffle(ALL_DOMINOES);
-    const {slots, remaining} = getNextDraft(deck);
+    const {slots, remain} = getNextDraft(deck);
     return {
         players: [
             { id: 0, grid: makeGrid(), claimedDomino: null, hasPlaced: false},
@@ -383,7 +383,7 @@ export function createInitialState() {
         ],
         currentDraft: [],
         nextDraft: slots,
-        deck: remaining,
+        deck: remain,
         havePlaced: false,
         phase: "first-claim",
         round: 1,
@@ -407,8 +407,8 @@ export function claimDomino(state, playerId, slotIndex) {
         : 1 - playerId;
     return {
         players: [
-            {... state.player[playerId], claimedDomino: myDomino, hasPlaced: false},
-            {... state.player[1 - playerId], claimedDomino: theirdomino, hasPlaced: false},
+            {... state.players[playerId], claimedDomino: myDomino, hasPlaced: false},
+            {... state.players[1 - playerId], claimedDomino: theirdomino, hasPlaced: false},
         ],
         currentDraft: [],
         nextDraft: [],
@@ -473,5 +473,28 @@ export function placeDomino(state, playerId, placement) {
 * @returns {GameState}
 */
 export function advanceRound(state) {
-    
+    const bothPlaced = state.players.every(p => p.hasPlaced);
+
+    if (state.phase === "final-place" && bothPlaced) {
+        return {...state, phase: "game-over" };
+    }
+    if (state.deck.length === 0) {
+        return {
+            ...state,
+            players: state.players.map(p => ({...p, hasPlaced: false})),
+            phase: "final-place"
+        };
+    }
+    else {
+        const {slots, remain} = getNextDraft(state.deck);
+        const firstClaimer = state.firstClaimer;
+    return {
+        players: state.players.map(p => ({...p, hasPlaced: false, claimedDomino: null})),
+        currentDraft: state.nextDraft,
+        nextDraft: slots,
+        deck: remain,
+        round: state.round + 1,
+        firstClaimer: firstClaimer,
+        phase: "placing"
+    }}
 }
