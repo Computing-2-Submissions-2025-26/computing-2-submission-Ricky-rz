@@ -11,7 +11,7 @@ const KINGDOM_SIZE = 5;  // Maximum bounding-box dimension for a legal kingdom
 const CASTLE_ROW   = 4;  // Centre cell row index
 const CASTLE_COL   = 4;  // Centre cell column index
 const DRAFT_SIZE   = 2;  // Dominoes drawn per round (one per king in a 2-player game)
-const DECK_SIZE    = 24; // 2-player half-deck (tiles 1–24)
+const DECK_SIZE    = 48; // full deck; each game randomly picks 24
 
 // ─── JSDoc type definitions ───────────────────────────────────────────────────
 
@@ -94,34 +94,68 @@ const DECK_SIZE    = 24; // 2-player half-deck (tiles 1–24)
  * @property {number}      firstClaimer  - pl;ayerId who picks first this round
  */
 
-// ─── Domino deck data (official 2-player tile set) ───────────────────────
+// ─── Domino deck data (official full 48-tile set) ────────────────────────────
 
 /** @type {Readonly<Domino[]>} */
 const ALL_DOMINOES = Object.freeze([
+    // 1–12: double-terrain, no crowns
     { id: 1,  number: 1,  left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "wheat",  crowns: 0 } },
     { id: 2,  number: 2,  left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "wheat",  crowns: 0 } },
     { id: 3,  number: 3,  left: { terrain: "forest", crowns: 0 }, right: { terrain: "forest", crowns: 0 } },
     { id: 4,  number: 4,  left: { terrain: "forest", crowns: 0 }, right: { terrain: "forest", crowns: 0 } },
     { id: 5,  number: 5,  left: { terrain: "forest", crowns: 0 }, right: { terrain: "forest", crowns: 0 } },
-    { id: 6,  number: 6,  left: { terrain: "water",  crowns: 0 }, right: { terrain: "water",  crowns: 0 } },
+    { id: 6,  number: 6,  left: { terrain: "forest", crowns: 0 }, right: { terrain: "forest", crowns: 0 } },
     { id: 7,  number: 7,  left: { terrain: "water",  crowns: 0 }, right: { terrain: "water",  crowns: 0 } },
     { id: 8,  number: 8,  left: { terrain: "water",  crowns: 0 }, right: { terrain: "water",  crowns: 0 } },
-    { id: 9,  number: 9,  left: { terrain: "grass",  crowns: 0 }, right: { terrain: "grass",  crowns: 0 } },
+    { id: 9,  number: 9,  left: { terrain: "water",  crowns: 0 }, right: { terrain: "water",  crowns: 0 } },
     { id: 10, number: 10, left: { terrain: "grass",  crowns: 0 }, right: { terrain: "grass",  crowns: 0 } },
-    { id: 11, number: 11, left: { terrain: "swamp",  crowns: 0 }, right: { terrain: "swamp",  crowns: 0 } },
-    { id: 12, number: 12, left: { terrain: "mine",   crowns: 0 }, right: { terrain: "mine",   crowns: 0 } },
+    { id: 11, number: 11, left: { terrain: "grass",  crowns: 0 }, right: { terrain: "grass",  crowns: 0 } },
+    { id: 12, number: 12, left: { terrain: "swamp",  crowns: 0 }, right: { terrain: "swamp",  crowns: 0 } },
+    // 13–18: mixed terrain, no crowns
     { id: 13, number: 13, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "forest", crowns: 0 } },
     { id: 14, number: 14, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "water",  crowns: 0 } },
     { id: 15, number: 15, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "grass",  crowns: 0 } },
     { id: 16, number: 16, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "swamp",  crowns: 0 } },
     { id: 17, number: 17, left: { terrain: "forest", crowns: 0 }, right: { terrain: "water",  crowns: 0 } },
     { id: 18, number: 18, left: { terrain: "forest", crowns: 0 }, right: { terrain: "grass",  crowns: 0 } },
+    // 19–23: wheat crowned (1 crown each)
     { id: 19, number: 19, left: { terrain: "wheat",  crowns: 1 }, right: { terrain: "forest", crowns: 0 } },
     { id: 20, number: 20, left: { terrain: "wheat",  crowns: 1 }, right: { terrain: "water",  crowns: 0 } },
     { id: 21, number: 21, left: { terrain: "wheat",  crowns: 1 }, right: { terrain: "grass",  crowns: 0 } },
     { id: 22, number: 22, left: { terrain: "wheat",  crowns: 1 }, right: { terrain: "swamp",  crowns: 0 } },
     { id: 23, number: 23, left: { terrain: "wheat",  crowns: 1 }, right: { terrain: "mine",   crowns: 0 } },
+    // 24–29: forest crowned (1 crown each)
     { id: 24, number: 24, left: { terrain: "forest", crowns: 1 }, right: { terrain: "wheat",  crowns: 0 } },
+    { id: 25, number: 25, left: { terrain: "forest", crowns: 1 }, right: { terrain: "wheat",  crowns: 0 } },
+    { id: 26, number: 26, left: { terrain: "forest", crowns: 1 }, right: { terrain: "wheat",  crowns: 0 } },
+    { id: 27, number: 27, left: { terrain: "forest", crowns: 1 }, right: { terrain: "wheat",  crowns: 0 } },
+    { id: 28, number: 28, left: { terrain: "forest", crowns: 1 }, right: { terrain: "water",  crowns: 0 } },
+    { id: 29, number: 29, left: { terrain: "forest", crowns: 1 }, right: { terrain: "grass",  crowns: 0 } },
+    // 30–35: water crowned (1 crown each)
+    { id: 30, number: 30, left: { terrain: "water",  crowns: 1 }, right: { terrain: "wheat",  crowns: 0 } },
+    { id: 31, number: 31, left: { terrain: "water",  crowns: 1 }, right: { terrain: "wheat",  crowns: 0 } },
+    { id: 32, number: 32, left: { terrain: "water",  crowns: 1 }, right: { terrain: "forest", crowns: 0 } },
+    { id: 33, number: 33, left: { terrain: "water",  crowns: 1 }, right: { terrain: "forest", crowns: 0 } },
+    { id: 34, number: 34, left: { terrain: "water",  crowns: 1 }, right: { terrain: "forest", crowns: 0 } },
+    { id: 35, number: 35, left: { terrain: "water",  crowns: 1 }, right: { terrain: "forest", crowns: 0 } },
+    // 36–39: grass crowned (1 crown, on right)
+    { id: 36, number: 36, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "grass",  crowns: 1 } },
+    { id: 37, number: 37, left: { terrain: "water",  crowns: 0 }, right: { terrain: "grass",  crowns: 1 } },
+    { id: 38, number: 38, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "swamp",  crowns: 1 } },
+    { id: 39, number: 39, left: { terrain: "grass",  crowns: 0 }, right: { terrain: "swamp",  crowns: 1 } },
+    // 40: mine (1 crown)
+    { id: 40, number: 40, left: { terrain: "mine",   crowns: 1 }, right: { terrain: "wheat",  crowns: 0 } },
+    // 41–42: grass crowned (2 crowns, on right)
+    { id: 41, number: 41, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "grass",  crowns: 2 } },
+    { id: 42, number: 42, left: { terrain: "water",  crowns: 0 }, right: { terrain: "grass",  crowns: 2 } },
+    // 43–44: swamp crowned (2 crowns, on right)
+    { id: 43, number: 43, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "swamp",  crowns: 2 } },
+    { id: 44, number: 44, left: { terrain: "grass",  crowns: 0 }, right: { terrain: "swamp",  crowns: 2 } },
+    // 45–48: mine crowned (2–3 crowns)
+    { id: 45, number: 45, left: { terrain: "mine",   crowns: 2 }, right: { terrain: "wheat",  crowns: 0 } },
+    { id: 46, number: 46, left: { terrain: "swamp",  crowns: 0 }, right: { terrain: "mine",   crowns: 2 } },
+    { id: 47, number: 47, left: { terrain: "swamp",  crowns: 0 }, right: { terrain: "mine",   crowns: 2 } },
+    { id: 48, number: 48, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "mine",   crowns: 3 } },
 ]);
 
 // ─── Private helpers ───────────────────────────────────────────────────────────
@@ -374,7 +408,7 @@ export function getNextDraft(deck) {
 * @returns {GameState}
 */
 export function createInitialState() {
-    const deck = shuffle(ALL_DOMINOES);
+    const deck = shuffle(ALL_DOMINOES).slice(0, 24);
     const {slots, remain} = getNextDraft(deck);
     return {
         players: [
