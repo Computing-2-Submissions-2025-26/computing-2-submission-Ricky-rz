@@ -513,6 +513,56 @@ function buildSetupScreen() {
     p1field.appendChild(p1input);
     screen.appendChild(p1field);
 
+        // ── Mode toggle ──
+    const modeDiv     = document.createElement('div');
+    modeDiv.className = 'setup-mode';
+    const twoPlayerBtn       = document.createElement('button');
+    twoPlayerBtn.textContent = '2 Players';
+    const vsAiBtn       = document.createElement('button');
+    vsAiBtn.textContent = 'vs Computer';
+    modeDiv.appendChild(twoPlayerBtn);
+    modeDiv.appendChild(vsAiBtn);
+    screen.appendChild(modeDiv);
+
+    // ── Player 2 name ──
+    const p2field     = document.createElement('div');
+    p2field.className = 'setup-field';
+    const p2label     = document.createElement('label');
+    const p2input     = document.createElement('input');
+    p2input.type      = 'text';
+    p2field.appendChild(p2label);
+    p2field.appendChild(p2input);
+    screen.appendChild(p2field);
+
+    // Apply mode without re-rendering the whole page
+    function applyMode(mode) {
+        gameMode = mode;
+        twoPlayerBtn.classList.toggle('btn--active', mode === '2p');
+        vsAiBtn.classList.toggle('btn--active',      mode === 'vs-ai');
+        p2label.textContent = mode === '2p' ? 'Player 2 name' : 'Opponent';
+        p2input.disabled    = mode === 'vs-ai';
+        p2input.value       = mode === 'vs-ai' ? 'Computer' : playerNames[1];
+    }
+    twoPlayerBtn.addEventListener('click', () => applyMode('2p'));
+    vsAiBtn.addEventListener('click',      () => applyMode('vs-ai'));
+    applyMode(gameMode);
+
+    // ── Start Game ──
+    const startBtn       = document.createElement('button');
+    startBtn.textContent = 'Start Game';
+    startBtn.addEventListener('click', () => {
+        playerNames[0] = p1input.value.trim() || 'Player 1';
+        playerNames[1] = gameMode === 'vs-ai'
+            ? 'Computer'
+            : (p2input.value.trim() || 'Player 2');
+        state     = createInitialState();
+        pending   = { row: null, col: null, orientation: 0 };
+        appScreen = 'game';
+        render();
+    });
+    screen.appendChild(startBtn);
+
+    return screen;
 }
 
 // ─── Root render ──────────────────────────────────────────────────────────────
