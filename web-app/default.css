@@ -5,9 +5,10 @@
 }
 
 body {
-    background: #f0ede6;
-    font-family: sans-serif;
+    background: #1a1828;
+    font-family: 'Segoe UI', system-ui, sans-serif;
     padding: 16px;
+    color: #e8e4f8;
 }
 
 #app {
@@ -28,8 +29,21 @@ body {
     border-radius: 10px;
 }
 
+.header__logo {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #f5c400;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
 .header h2 {
-    font-size: 1.3rem;
+    font-size: 1rem;
+    font-weight: 500;
+    flex: 1;
+    text-align: center;
+    color: #e8e4f8;
 }
 
 /* ── Round tracker ── */
@@ -103,8 +117,10 @@ body {
 }
 
 .player-label {
-    font-weight: bold;
-    font-size: 1.1rem;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #e8e4f8;
+    letter-spacing: 0.03em;
 }
 
 .grid {
@@ -120,7 +136,7 @@ body {
 
 .grid--active {
     border-color: #f5c400;
-    box-shadow: 0 0 10px #f5c400;
+    box-shadow: 0 0 24px rgba(245, 196, 0, 0.5);
 }
 
 .cell {
@@ -157,9 +173,10 @@ body {
 
 .domino {
     display: flex;
-    border: 2px solid #333;
-    border-radius: 3px;
+    border: 2px solid #524f80;
+    border-radius: 5px;
     overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .domino-half {
@@ -255,7 +272,15 @@ button:disabled {
 .btn--active {
     background: #f5c400;
     border-color: #c49b00;
+    color: #1a1400;
     font-weight: bold;
+}
+
+.btn--active:hover:not(:disabled) {
+    background: #c49b00;
+    border-color: #a07800;
+    color: #1a1400;
+    box-shadow: 0 4px 16px rgba(245, 196, 0, 0.35);
 }
 
 /* ── Hold label ── */
@@ -448,8 +473,9 @@ button:disabled {
 }
 
 .setup-field input:disabled {
-    background: #eee;
-    color: #888;
+    background: #1e1c30;
+    color: #4a4870;
+    cursor: not-allowed;
 }
 
 .setup-mode {
