@@ -81,9 +81,9 @@ body {
 }
 
 .round-dot--future {
-    background: #fff;
-    border-color: #ddd;
-    color: #bbb;
+    background: transparent;
+    border-color: #38365a;
+    color: #4a4870;
 }
 
 /* ── Grids ── */
@@ -176,11 +176,17 @@ body {
 
 .claim-panel {
     margin-bottom: 16px;
+    padding: 20px 24px;
+    background: #23213a;
+    border: 1px solid #38365a;
+    border-radius: 10px;
 }
 
 .claim-panel p {
-    margin-bottom: 8px;
+    margin-bottom: 12px;
     font-weight: bold;
+    color: #f5c400;
+    letter-spacing: 0.03em;
 }
 
 .slots-row {
@@ -218,6 +224,10 @@ body {
     gap: 8px;
     flex-wrap: wrap;
     align-items: center;
+    padding: 12px 16px;
+    background: #23213a;
+    border: 1px solid #38365a;
+    border-radius: 10px;
 }
 
 /* ── Buttons ── */
@@ -251,17 +261,18 @@ button:disabled {
 /* ── Hold label ── */
 
 .hold-label {
-    font-size: 0.85rem;
-    margin-top: 8px;
+    font-size: 0.82rem;
+    margin-top: 4px;
     margin-bottom: 4px;
     font-weight: bold;
+    color: #9997b0;
 }
 
 /* ── Orientation hint ── */
 
 .orient-label {
-    font-size: 0.9rem;
-    color: #444;
+    font-size: 0.88rem;
+    color: #9997b0;
     margin-right: 8px;
 }
 
@@ -350,7 +361,11 @@ button:disabled {
     flex-shrink: 0;
     display:     flex;
     flex-direction: column;
-    gap:         8px;
+    gap:         10px;
+    padding:     16px;
+    background:  #23213a;
+    border:      1px solid #38365a;
+    border-radius: 10px;
 }
 
 .active-panel {
@@ -401,8 +416,12 @@ button:disabled {
 }
 
 .setup-screen h1 {
-    font-size: 2rem;
+    font-size: 2.2rem;
     text-align: center;
+    color: #f5c400;
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 30px rgba(245, 196, 0, 0.3);
+    font-weight: 800;
 }
 
 .setup-field {
@@ -413,6 +432,10 @@ button:disabled {
 
 .setup-field label {
     font-weight: bold;
+    color: #9997b0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
 }
 
 .setup-field input {
@@ -442,12 +465,19 @@ button:disabled {
 
 .game-over-banner {
     margin-top: 20px;
-    padding: 16px 24px;
-    background: #fff8e1;
+    padding: 24px 32px;
+    background: #23213a;
     border: 2px solid #f5c400;
-    border-radius: 8px;
-    font-size: 1.2rem;
+    border-radius: 12px;
+    font-size: 1.1rem;
     display: inline-flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
+    box-shadow: 0 0 40px rgba(245, 196, 0, 0.2);
+}
+
+.game-over-banner p:first-child {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #f5c400;
 }
