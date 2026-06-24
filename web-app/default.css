@@ -6,9 +6,12 @@
 
 body {
     background: #1a1828;
+    background-image: radial-gradient(ellipse 120% 40% at 50% 0%,
+        #252040 0%, transparent 65%);
     font-family: 'Segoe UI', system-ui, sans-serif;
     padding: 16px;
     color: #e8e4f8;
+    min-height: 100vh;
 }
 
 #app {
@@ -62,9 +65,11 @@ body {
 
 .round-tracker__label {
     font-weight: bold;
-    font-size: 0.85rem;
-    color: #555;
+    font-size: 0.75rem;
+    color: #9997b0;
     margin-right: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
 }
 
 .round-dot {
@@ -104,15 +109,16 @@ body {
 
 .grids-row {
     display: flex;
-    gap: 40px;
+    gap: 32px;
     flex-wrap: wrap;
     margin-bottom: 20px;
+    align-items: flex-start;
 }
 
 .grid-wrapper {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
 }
 
@@ -221,6 +227,7 @@ body {
     border: 2px solid #38365a;
     border-radius: 8px;
     cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.15s;
 }
 
 .draft-slot p {
@@ -232,6 +239,7 @@ body {
 .draft-slot:hover {
     border-color: #f5c400;
     background: #3a3760;
+    transform: translateY(-2px);
 }
 
 /* ── Controls ── */
@@ -257,6 +265,7 @@ button {
     color: #e8e4f8;
     border-radius: 5px;
     cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
 button:hover:not(:disabled) {
@@ -301,11 +310,12 @@ button:disabled {
     margin-right: 8px;
 }
 
-/* ── Grid + score table side by side ── */
+/* ── Grid + score table stacked ── */
 
 .grid-and-table {
     display: flex;
-    gap: 12px;
+    flex-direction: column;
+    gap: 10px;
     align-items: flex-start;
 }
 
@@ -349,27 +359,27 @@ button:disabled {
 /* ── Large grid ── */
 
 .grid--large {
-    grid-template-columns: repeat(9, 52px);
-    grid-template-rows:    repeat(9, 52px);
+    grid-template-columns: repeat(9, 54px);
+    grid-template-rows:    repeat(9, 54px);
 }
 
 .grid--large .cell {
-    width:     52px;
-    height:    52px;
-    font-size: 20px;
+    width:     54px;
+    height:    54px;
+    font-size: 18px;
 }
 
 /* ── Small grid ── */
 
 .grid--small {
-    grid-template-columns: repeat(9, 28px);
-    grid-template-rows:    repeat(9, 28px);
+    grid-template-columns: repeat(9, 26px);
+    grid-template-rows:    repeat(9, 26px);
 }
 
 .grid--small .cell {
-    width:     28px;
-    height:    28px;
-    font-size: 11px;
+    width:     26px;
+    height:    26px;
+    font-size: 10px;
 }
 
 /* ── Focus layout ── */
@@ -379,10 +389,11 @@ button:disabled {
     gap:         24px;
     align-items: flex-start;
     margin-bottom: 20px;
+    flex-wrap:   wrap;
 }
 
 .opponent-panel {
-    width:       260px;
+    width:       295px;
     flex-shrink: 0;
     display:     flex;
     flex-direction: column;
@@ -391,10 +402,12 @@ button:disabled {
     background:  #23213a;
     border:      1px solid #38365a;
     border-radius: 10px;
+    overflow:    hidden;
 }
 
 .active-panel {
     flex:    0 0 auto;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap:     12px;
@@ -470,6 +483,12 @@ button:disabled {
     border-radius: 5px;
     background: #2d2b48;
     color: #e8e4f8;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.setup-field input:focus {
+    border-color: #f5c400;
 }
 
 .setup-field input:disabled {
