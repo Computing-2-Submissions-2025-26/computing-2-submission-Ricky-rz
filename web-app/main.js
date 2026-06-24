@@ -42,6 +42,9 @@ let playerNames = ['Player 1', 'Player 2'];
 /** @type {'2p'|'vs-ai'} */
 let gameMode = '2p';
 
+/** True after one player places but before the other player's turn begins. */
+let pendingEndTurn = false;
+
 // ─── Terrain display maps ─────────────────────────────────────────────────────
 
 /** @type {Record<import('./game-module1.js').Terrain, string>} */
@@ -186,6 +189,31 @@ function normalizeState() {
     }
 }
 
+/**
+ * Returns the 5×5 bounding box around all placed tiles (including castle).
+ * Starts at the castle, expands to cover every non-empty cell,
+ * then pads the smaller dimension until the box is exactly 5×5.
+ * @param {import('./game-module1.js').Grid} grid
+ * @returns {{ minR: number, maxR: number, minC: number, maxC: number }}
+ */
+function getKingdomBounds(grid) {
+    let minR = 4, maxR = 4, minC = 4, maxC = 4;
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+            if (grid[r][c].terrain !== 'empty') {
+                minR = Math.min(minR, r); maxR = Math.max(maxR, r);
+                minC = Math.min(minC, c); maxC = Math.max(maxC, c);
+            }
+        }
+    }
+    // Centre a 5×5 window on the kingdom midpoint, clamped so it stays on the grid
+    const midR = Math.round((minR + maxR) / 2);
+    const midC = Math.round((minC + maxC) / 2);
+    minR = Math.max(0, Math.min(4, midR - 2));
+    minC = Math.max(0, Math.min(4, midC - 2));
+    return { minR, maxR: minR + 4, minC, maxC: minC + 4 };
+}
+
 // ─── DOM builder functions ────────────────────────────────────────────────────
 
 /**
@@ -201,11 +229,16 @@ function normalizeState() {
  * @param {import('./game-module1.js').Player} player
  * @param {boolean} isActive
  * @param {number} activeId
+ * @param {'normal'|'large'|'small'} [size]
  * @returns {HTMLElement}
  */
-function buildGrid(player, isActive, activeId) {
+function buildGrid(player, isActive, activeId, size = 'normal') {
     const grid = document.createElement('div');
-    grid.className = 'grid' + (isActive ? ' grid--active' : '');
+    const sizeClass = size === 'large' ? ' grid--large'
+                    : size === 'small' ? ' grid--small' : '';
+    grid.className = 'grid' + (isActive ? ' grid--active' : '') + sizeClass;
+
+    const bounds = getKingdomBounds(player.grid);
 
     const canInteract = isActive &&
         (state.phase === 'placing' || state.phase === 'final-place') &&
@@ -231,7 +264,9 @@ function buildGrid(player, isActive, activeId) {
         for (let c = 0; c < 9; c++) {
             const cell    = player.grid[r][c];
             const div     = document.createElement('div');
-            div.className = 'cell';
+            const isFaint = r < bounds.minR || r > bounds.maxR ||
+                            c < bounds.minC || c > bounds.maxC;
+            div.className = 'cell' + (isFaint ? ' cell--faint' : '');
 
             const isFirst  = canInteract && pending.row !== null &&
                              r === pending.row && c === pending.col;
@@ -275,6 +310,9 @@ function buildGrid(player, isActive, activeId) {
             const r = Math.floor((e.clientY - rect.top)  / (rect.height / 9));
             const c = Math.floor((e.clientX - rect.left) / (rect.width  / 9));
             if (r >= 0 && r < 9 && c >= 0 && c < 9) {
+                // Skip cells outside the 5×5 kingdom (they are faint)
+                if (r < bounds.minR || r > bounds.maxR ||
+                    c < bounds.minC || c > bounds.maxC) { return; }
                 if (pending.row !== r || pending.col !== c) {
                     pending.row = r;
                     pending.col = c;
@@ -305,6 +343,8 @@ function buildGrid(player, isActive, activeId) {
             pending = { row: null, col: null, orientation: 0 };
             if (state.players.every(p => p.hasPlaced)) {
                 state = advanceRound(state);
+            } else {
+                pendingEndTurn = true;
             }
             render();
         });
@@ -478,12 +518,43 @@ function buildControls(activeId) {
         pending = { row: null, col: null, orientation: 0 };
         if (state.players.every(p => p.hasPlaced)) {
             state = advanceRound(state);
+        } else {
+            pendingEndTurn = true;
         }
         render();
     });
     panel.appendChild(discardBtn);
 
     return panel;
+}
+
+// ─── End-turn handoff screen ─────────────────────────────────────────────────
+
+/**
+ * Shown after one player places and before the other player's turn begins.
+ * Hides both boards so the next player can take the device privately.
+ * @param {number} nextPlayerId
+ * @returns {HTMLElement}
+ */
+function buildEndTurnScreen(nextPlayerId) {
+    const screen       = document.createElement('div');
+    screen.className   = 'end-turn-screen';
+
+    const msg       = document.createElement('p');
+    msg.textContent = `Pass the device to ${playerNames[nextPlayerId]}`;
+    screen.appendChild(msg);
+
+    const btn       = document.createElement('button');
+    btn.className   = 'btn--active';
+    btn.textContent = `Start ${playerNames[nextPlayerId]}'s turn`;
+    btn.addEventListener('click', () => {
+        pendingEndTurn = false;
+        pending = { row: null, col: null, orientation: 0 };
+        render();
+    });
+    screen.appendChild(btn);
+
+    return screen;
 }
 
 // ─── Setup screen ────────────────────────────────────────────────────────────
@@ -555,9 +626,10 @@ function buildSetupScreen() {
         playerNames[1] = gameMode === 'vs-ai'
             ? 'Computer'
             : (p2input.value.trim() || 'Player 2');
-        state     = createInitialState();
-        pending   = { row: null, col: null, orientation: 0 };
-        appScreen = 'game';
+        state          = createInitialState();
+        pending        = { row: null, col: null, orientation: 0 };
+        pendingEndTurn = false;
+        appScreen      = 'game';
         render();
     });
     screen.appendChild(startBtn);
@@ -584,6 +656,11 @@ function render() {
 
     if (appScreen === 'setup') {
         app.appendChild(buildSetupScreen());
+        return;
+    }
+
+    if (pendingEndTurn) {
+        app.appendChild(buildEndTurnScreen(activePlayerId(state)));
         return;
     }
 
@@ -624,83 +701,115 @@ function render() {
     header.appendChild(info);
     app.appendChild(header);
 
-    // ── 2. Grids + score tables + held dominos ──
-    const gridsRow     = document.createElement('div');
-    gridsRow.className = 'grids-row';
-
-    state.players.forEach(player => {
-        const isActive = player.id === activeId && effectivePhase !== 'game-over';
-        const wrapper  = document.createElement('div');
-        wrapper.className = 'grid-wrapper';
-
-        const label       = document.createElement('p');
-        label.className   = 'player-label';
-        label.textContent = playerNames[player.id];
-        wrapper.appendChild(label);
-
-        // Grid and score table side by side
-        const gridAndTable     = document.createElement('div');
-        gridAndTable.className = 'grid-and-table';
-        gridAndTable.appendChild(buildGrid(player, isActive, activeId));
-        gridAndTable.appendChild(buildScoreTable(player));
-        wrapper.appendChild(gridAndTable);
-
-        // Held domino below the grid
-        if (player.claimedDomino && effectivePhase !== 'game-over') {
-            const holdLabel       = document.createElement('p');
-            holdLabel.className   = 'hold-label';
-            holdLabel.textContent = isActive
-                ? '▶ Your turn (left-click to place, right-click to rotate):'
-                : '⏳ Waiting:';
-            wrapper.appendChild(holdLabel);
-            wrapper.appendChild(buildDomino(player.claimedDomino));
-        }
-
-        gridsRow.appendChild(wrapper);
-    });
-
-    app.appendChild(gridsRow);
-
-    // ── 5. Game-over banner ──
+    // ── Game-over: normal side-by-side layout + banner ──
     if (effectivePhase === 'game-over') {
+        const gridsRow     = document.createElement('div');
+        gridsRow.className = 'grids-row';
+        state.players.forEach(player => {
+            const wrapper     = document.createElement('div');
+            wrapper.className = 'grid-wrapper';
+            const label       = document.createElement('p');
+            label.className   = 'player-label';
+            label.textContent = playerNames[player.id];
+            wrapper.appendChild(label);
+            const gridAndTable     = document.createElement('div');
+            gridAndTable.className = 'grid-and-table';
+            gridAndTable.appendChild(buildGrid(player, false, activeId));
+            gridAndTable.appendChild(buildScoreTable(player));
+            wrapper.appendChild(gridAndTable);
+            gridsRow.appendChild(wrapper);
+        });
+        app.appendChild(gridsRow);
+
         const banner     = document.createElement('div');
         banner.className = 'game-over-banner';
-
         const scores = state.players
             .map(p => ({ id: p.id, score: scoreGrid(p.grid) }))
             .sort((a, b) => b.score - a.score);
-
-        const winner = scores[0].score > scores[1].score
-            ? `Player ${scores[0].id + 1} wins!`
+        const winnerText = scores[0].score > scores[1].score
+            ? `${playerNames[scores[0].id]} wins!`
             : 'It\'s a draw!';
-
         const msg       = document.createElement('p');
-        msg.textContent = winner;
+        msg.textContent = winnerText;
         banner.appendChild(msg);
-
         scores.forEach(({ id, score }) => {
             const p       = document.createElement('p');
             p.textContent = `${playerNames[id]}: ${score} points`;
             banner.appendChild(p);
         });
-
         app.appendChild(banner);
         return;
     }
 
-    // ── 3. Claim panel ──
+    // ── Claiming: normal side-by-side layout + claim panel ──
     if (needsToClaim || effectivePhase === 'first-claim') {
+        const gridsRow     = document.createElement('div');
+        gridsRow.className = 'grids-row';
+        state.players.forEach(player => {
+            const isActive = player.id === activeId;
+            const wrapper     = document.createElement('div');
+            wrapper.className = 'grid-wrapper';
+            const label       = document.createElement('p');
+            label.className   = 'player-label';
+            label.textContent = playerNames[player.id];
+            wrapper.appendChild(label);
+            const gridAndTable     = document.createElement('div');
+            gridAndTable.className = 'grid-and-table';
+            gridAndTable.appendChild(buildGrid(player, isActive, activeId));
+            gridAndTable.appendChild(buildScoreTable(player));
+            wrapper.appendChild(gridAndTable);
+            gridsRow.appendChild(wrapper);
+        });
+        app.appendChild(gridsRow);
         app.appendChild(buildClaimPanel());
         return;
     }
 
-    // ── 4. Placing controls ──
-    if (effectivePhase === 'placing' || effectivePhase === 'final-place') {
-        const activePlayer = state.players.find(p => p.id === activeId);
-        if (activePlayer && activePlayer.claimedDomino) {
-            app.appendChild(buildControls(activeId));
-        }
+    // ── Placing / final-place: focus layout ──
+    const activePlayer   = state.players.find(p => p.id === activeId);
+    const opponentPlayer = state.players.find(p => p.id !== activeId);
+
+    const layout     = document.createElement('div');
+    layout.className = 'layout--placing';
+
+    // Opponent panel — small grid on the left
+    const opponentPanel     = document.createElement('div');
+    opponentPanel.className = 'opponent-panel';
+    const oppLabel       = document.createElement('p');
+    oppLabel.className   = 'player-label';
+    oppLabel.textContent =
+        `${playerNames[opponentPlayer.id]} — ${scoreGrid(opponentPlayer.grid)} pts`;
+    opponentPanel.appendChild(oppLabel);
+    opponentPanel.appendChild(buildGrid(opponentPlayer, false, activeId, 'small'));
+    if (opponentPlayer.claimedDomino) {
+        const waitLabel       = document.createElement('p');
+        waitLabel.className   = 'hold-label';
+        waitLabel.textContent = '⏳ Waiting to place:';
+        opponentPanel.appendChild(waitLabel);
+        opponentPanel.appendChild(buildDomino(opponentPlayer.claimedDomino));
     }
+    opponentPanel.appendChild(buildScoreTable(opponentPlayer));
+    layout.appendChild(opponentPanel);
+
+    // Active panel — large grid on the right
+    const activePanel     = document.createElement('div');
+    activePanel.className = 'active-panel';
+    const actLabel       = document.createElement('p');
+    actLabel.className   = 'player-label';
+    actLabel.textContent = `${playerNames[activeId]} — Your turn`;
+    activePanel.appendChild(actLabel);
+    activePanel.appendChild(buildGrid(activePlayer, true, activeId, 'large'));
+    if (activePlayer.claimedDomino) {
+        const holdLabel       = document.createElement('p');
+        holdLabel.className   = 'hold-label';
+        holdLabel.textContent = '▶ Hover to place, right-click to rotate:';
+        activePanel.appendChild(holdLabel);
+        activePanel.appendChild(buildDomino(activePlayer.claimedDomino));
+        activePanel.appendChild(buildControls(activeId));
+    }
+    activePanel.appendChild(buildScoreTable(activePlayer));
+    layout.appendChild(activePanel);
+    app.appendChild(layout);
 }
 
 render();
