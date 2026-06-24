@@ -3,12 +3,11 @@
  * DOM layer for the 2-player Kingdomino web app.
  *
  * Responsibilities:
- *   - Import pure game logic from ./game-module.js
+ *   - Import pure game logic from ./game-module1.js
  *   - Maintain one mutable `state` reference and one `pending` placement object
  *   - Re-render the entire UI after every user action
- *   - Wire all DOM events (new game, claim, grid-click, orientation, flip, place, discard)
  *
- * No game logic lives here — all rules are enforced by game-module.
+ * No game logic lives here — all rules are enforced by game-module1.
  */
 
 import {
@@ -23,19 +22,20 @@ import {
 
 // ─── Module-level mutable state ───────────────────────────────────────────────
 
-/** @type {import('./game-module.js').GameState} */
+/** @type {import('./game-module1.js').GameState} */
 let state = createInitialState();
 
 /**
- * Placement being assembled by the active player's grid clicks and controls.
- * Reset to defaults after every place / discard / claim that changes the active player.
- * @type {{ row: number|null, col: number|null, orientation: 'horizontal'|'vertical', flipped: boolean }}
+ * Tracks where the active player is hovering and which orientation they chose.
+ * row/col update on mousemove; orientation cycles on right-click.
+ * Reset to defaults after every place / discard / claim.
+ * @type {{ row: number|null, col: number|null, orientation: number }}
  */
 let pending = { row: null, col: null, orientation: 0 };
 
 // ─── Terrain display maps ─────────────────────────────────────────────────────
 
-/** @type {Record<import('./game-module.js').Terrain, string>} */
+/** @type {Record<import('./game-module1.js').Terrain, string>} */
 const TERRAIN_BG = {
     empty:  '#ddd9c4',
     castle: '#9e9e9e',
@@ -47,7 +47,7 @@ const TERRAIN_BG = {
     mine:   '#546e7a',
 };
 
-/** @type {Record<import('./game-module.js').Terrain, string>} */
+/** @type {Record<import('./game-module1.js').Terrain, string>} */
 const TERRAIN_ICON = {
     empty:  '',
     castle: '🏰',
@@ -59,99 +59,555 @@ const TERRAIN_ICON = {
     mine:   '⛏️',
 };
 
+/** Terrains whose icon needs white text to be readable. */
+const DARK_TERRAINS = new Set(['forest', 'water', 'swamp', 'mine']);
+
+// ─── Pure helper functions ────────────────────────────────────────────────────
+
+/**
+ * Returns the id of the player who should act next.
+ * Uses find-by-id so it is correct even when claimDomino reorders the array.
+ * @param {import('./game-module1.js').GameState} st
+ * @returns {number}
+ */
+function activePlayerId(st) {
+    if (st.phase === 'first-claim') {
+        return st.firstClaimer;
+    }
+    if (st.phase === 'placing' || st.phase === 'final-place') {
+        const first = st.players.find(p => p.id === st.firstClaimer);
+        return first.hasPlaced ? 1 - st.firstClaimer : st.firstClaimer;
+    }
+    return 0;
+}
+
+/**
+ * Returns the position of the second tile given the first tile and orientation.
+ * 0 = right, 1 = down, 2 = left, 3 = up.
+ * @param {number} row
+ * @param {number} col
+ * @param {number} orientation
+ * @returns {{ row: number, col: number }}
+ */
+function secondTile(row, col, orientation) {
+    if (orientation === 0) { return { row,       col: col + 1 }; }
+    if (orientation === 1) { return { row: row + 1, col       }; }
+    if (orientation === 2) { return { row,       col: col - 1 }; }
+    return                          { row: row - 1, col       };
+}
+
+/**
+ * Returns per-region score breakdown for a grid.
+ * Each entry is one connected component of same terrain.
+ * @param {import('./game-module1.js').Grid} grid
+ * @returns {{ terrain: string, size: number, crowns: number, score: number }[]}
+ */
+function getScoreBreakdown(grid) {
+    const GRID_SIZE = 9;
+    const visited   = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(false));
+    const regions   = [];
+
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            if (visited[r][c]) { continue; }
+            const terrain = grid[r][c].terrain;
+            if (terrain === 'empty' || terrain === 'castle') {
+                visited[r][c] = true;
+                continue;
+            }
+
+            // Flood fill this region
+            const stack = [[r, c]];
+            const cells = [];
+            while (stack.length > 0) {
+                const [row, col] = stack.pop();
+                if (row < 0 || row >= GRID_SIZE ||
+                    col < 0 || col >= GRID_SIZE) { continue; }
+                if (visited[row][col]) { continue; }
+                if (grid[row][col].terrain !== terrain) { continue; }
+                visited[row][col] = true;
+                cells.push(grid[row][col]);
+                stack.push(
+                    [row - 1, col], [row + 1, col],
+                    [row, col - 1], [row, col + 1]
+                );
+            }
+
+            const crowns = cells.reduce((s, cell) => s + cell.crowns, 0);
+            regions.push({
+                terrain,
+                size:   cells.length,
+                crowns,
+                score:  cells.length * crowns,
+            });
+        }
+    }
+
+    return regions;
+}
+
+/**
+ * If the active player has no legal placements for their held domino,
+ * automatically discards it and advances the round if needed.
+ * Loops until no more auto-discards are required.
+ * This handles the "grid is full" case.
+ */
+function normalizeState() {
+    let changed = true;
+    while (changed) {
+        changed = false;
+        if (state.phase !== 'placing' && state.phase !== 'final-place') { break; }
+
+        // Also stop if effective phase is game-over
+        if (state.players.every(p => p.claimedDomino === null) &&
+            state.nextDraft.length === 0 && state.deck.length === 0) { break; }
+
+        const id     = activePlayerId(state);
+        const player = state.players.find(p => p.id === id);
+        if (!player || !player.claimedDomino) { break; }
+
+        const legal = findLegalPlacements(player.grid, player.claimedDomino);
+        if (legal.length === 0) {
+            state = placeDomino(state, id, null);
+            if (state.players.every(p => p.hasPlaced)) {
+                state = advanceRound(state);
+            }
+            changed = true;
+        }
+    }
+}
+
+// ─── DOM builder functions ────────────────────────────────────────────────────
+
+/**
+ * Builds one 9×9 grid div for a player.
+ *
+ * During the active player's placing turn:
+ *   - Hovering shows the domino preview on the board (actual terrain colours)
+ *   - Green border = valid placement, red border = invalid
+ *   - Left click  → place at current hover position (only if valid)
+ *   - Right click → rotate orientation +1
+ *   - Mouse leaving the grid clears the preview
+ *
+ * @param {import('./game-module1.js').Player} player
+ * @param {boolean} isActive
+ * @param {number} activeId
+ * @returns {HTMLElement}
+ */
+function buildGrid(player, isActive, activeId) {
+    const grid = document.createElement('div');
+    grid.className = 'grid' + (isActive ? ' grid--active' : '');
+
+    const canInteract = isActive &&
+        (state.phase === 'placing' || state.phase === 'final-place') &&
+        player.claimedDomino !== null;
+
+    // Pre-compute preview data
+    let tile2         = null;
+    let tile2InBounds = false;
+    let validPlace    = false;
+
+    if (canInteract && pending.row !== null) {
+        tile2 = secondTile(pending.row, pending.col, pending.orientation);
+        tile2InBounds =
+            tile2.row >= 0 && tile2.row < 9 &&
+            tile2.col >= 0 && tile2.col < 9;
+        validPlace = isValidPlacement(
+            player.grid, player.claimedDomino,
+            pending.row, pending.col, pending.orientation
+        );
+    }
+
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+            const cell    = player.grid[r][c];
+            const div     = document.createElement('div');
+            div.className = 'cell';
+
+            const isFirst  = canInteract && pending.row !== null &&
+                             r === pending.row && c === pending.col;
+            const isSecond = canInteract && tile2InBounds &&
+                             r === tile2.row  && c === tile2.col;
+
+            if (isFirst) {
+                const half = player.claimedDomino.left;
+                div.style.background = TERRAIN_BG[half.terrain];
+                div.textContent = half.crowns > 0
+                    ? '👑'.repeat(half.crowns)
+                    : TERRAIN_ICON[half.terrain];
+                div.classList.add(validPlace ? 'cell--preview-ok' : 'cell--preview-bad');
+
+            } else if (isSecond) {
+                const half = player.claimedDomino.right;
+                div.style.background = TERRAIN_BG[half.terrain];
+                div.textContent = half.crowns > 0
+                    ? '👑'.repeat(half.crowns)
+                    : TERRAIN_ICON[half.terrain];
+                div.classList.add(validPlace ? 'cell--preview-ok' : 'cell--preview-bad');
+
+            } else {
+                div.style.background = TERRAIN_BG[cell.terrain];
+                if (cell.crowns > 0) {
+                    div.textContent = '👑'.repeat(cell.crowns);
+                } else if (TERRAIN_ICON[cell.terrain]) {
+                    div.textContent = TERRAIN_ICON[cell.terrain];
+                }
+            }
+
+            grid.appendChild(div);
+        }
+    }
+
+    if (canInteract) {
+        grid.style.cursor = 'crosshair';
+
+        grid.addEventListener('mousemove', (e) => {
+            const rect = grid.getBoundingClientRect();
+            const r = Math.floor((e.clientY - rect.top)  / (rect.height / 9));
+            const c = Math.floor((e.clientX - rect.left) / (rect.width  / 9));
+            if (r >= 0 && r < 9 && c >= 0 && c < 9) {
+                if (pending.row !== r || pending.col !== c) {
+                    pending.row = r;
+                    pending.col = c;
+                    render();
+                }
+            }
+        });
+
+        grid.addEventListener('mouseleave', () => {
+            pending.row = null;
+            pending.col = null;
+            render();
+        });
+
+        // Left click → place (only when valid)
+        grid.addEventListener('click', () => {
+            if (pending.row === null) { return; }
+            if (!isValidPlacement(
+                player.grid, player.claimedDomino,
+                pending.row, pending.col, pending.orientation
+            )) { return; }
+
+            state = placeDomino(state, activeId, {
+                row: pending.row,
+                col: pending.col,
+                orientation: pending.orientation,
+            });
+            pending = { row: null, col: null, orientation: 0 };
+            if (state.players.every(p => p.hasPlaced)) {
+                state = advanceRound(state);
+            }
+            render();
+        });
+
+        // Right click → rotate orientation +1
+        grid.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            pending.orientation = (pending.orientation + 1) % 4;
+            render();
+        });
+    }
+
+    return grid;
+}
+
+/**
+ * Builds a live score breakdown table for a player.
+ * Each row is one connected region; shows terrain, tiles, crowns, and score.
+ * @param {import('./game-module1.js').Player} player
+ * @returns {HTMLElement}
+ */
+function buildScoreTable(player) {
+    const regions = getScoreBreakdown(player.grid);
+    const total   = regions.reduce((s, r) => s + r.score, 0);
+
+    const table       = document.createElement('table');
+    table.className   = 'score-table';
+
+    // ── Header ──
+    const thead = document.createElement('thead');
+    const hrow  = document.createElement('tr');
+    ['Terrain', 'Tiles', '👑', 'Score'].forEach(text => {
+        const th       = document.createElement('th');
+        th.textContent = text;
+        hrow.appendChild(th);
+    });
+    thead.appendChild(hrow);
+    table.appendChild(thead);
+
+    // ── Body ──
+    const tbody = document.createElement('tbody');
+    if (regions.length === 0) {
+        const row  = document.createElement('tr');
+        const td   = document.createElement('td');
+        td.colSpan = 4;
+        td.style.textAlign = 'center';
+        td.textContent     = '—';
+        row.appendChild(td);
+        tbody.appendChild(row);
+    } else {
+        regions.forEach(({ terrain, size, crowns, score }) => {
+            const row = document.createElement('tr');
+
+            const terrainTd       = document.createElement('td');
+            terrainTd.textContent = TERRAIN_ICON[terrain] + ' ' + terrain;
+            terrainTd.style.background = TERRAIN_BG[terrain];
+            if (DARK_TERRAINS.has(terrain)) {
+                terrainTd.style.color = '#fff';
+            }
+            row.appendChild(terrainTd);
+
+            [size, crowns, score].forEach(val => {
+                const td       = document.createElement('td');
+                td.textContent = val;
+                row.appendChild(td);
+            });
+
+            tbody.appendChild(row);
+        });
+    }
+    table.appendChild(tbody);
+
+    // ── Footer ──
+    const tfoot     = document.createElement('tfoot');
+    const frow      = document.createElement('tr');
+    const cells     = ['Total', '', '', total];
+    cells.forEach(val => {
+        const td       = document.createElement('td');
+        td.textContent = val;
+        frow.appendChild(td);
+    });
+    tfoot.appendChild(frow);
+    table.appendChild(tfoot);
+
+    return table;
+}
+
+/**
+ * Builds a domino preview strip: two half-cell divs side by side.
+ * @param {import('./game-module1.js').Domino} domino
+ * @returns {HTMLElement}
+ */
+function buildDomino(domino) {
+    const wrapper     = document.createElement('div');
+    wrapper.className = 'domino';
+
+    [domino.left, domino.right].forEach(half => {
+        const div       = document.createElement('div');
+        div.className   = 'domino-half';
+        div.style.background = TERRAIN_BG[half.terrain];
+        div.textContent = half.crowns > 0
+            ? '👑'.repeat(half.crowns)
+            : TERRAIN_ICON[half.terrain];
+        wrapper.appendChild(div);
+    });
+
+    return wrapper;
+}
+
+/**
+ * Builds the claim panel — shown when players need to pick from nextDraft.
+ * Clicking a slot calls claimDomino for state.firstClaimer; the other player
+ * is auto-assigned the remaining slot.
+ * @returns {HTMLElement}
+ */
+function buildClaimPanel() {
+    const panel       = document.createElement('div');
+    panel.className   = 'claim-panel';
+
+    const title       = document.createElement('p');
+    title.textContent = `Player ${state.firstClaimer + 1}: pick a domino`;
+    panel.appendChild(title);
+
+    const row       = document.createElement('div');
+    row.className   = 'slots-row';
+
+    state.nextDraft.forEach((slot, i) => {
+        const slotDiv     = document.createElement('div');
+        slotDiv.className = 'draft-slot';
+
+        const num       = document.createElement('p');
+        num.textContent = `#${slot.domino.number}`;
+        slotDiv.appendChild(num);
+        slotDiv.appendChild(buildDomino(slot.domino));
+
+        slotDiv.addEventListener('click', () => {
+            state = claimDomino(state, state.firstClaimer, i);
+            pending = { row: null, col: null, orientation: 0 };
+            render();
+        });
+
+        row.appendChild(slotDiv);
+    });
+
+    panel.appendChild(row);
+    return panel;
+}
+
+/**
+ * Builds the placing controls: orientation hint + Discard button.
+ * Placement is done by left-clicking the grid.
+ * @param {number} activeId
+ * @returns {HTMLElement}
+ */
+function buildControls(activeId) {
+    const panel     = document.createElement('div');
+    panel.className = 'controls';
+
+    const hint       = document.createElement('span');
+    hint.className   = 'orient-label';
+    const arrows     = ['→', '↓', '←', '↑'];
+    hint.textContent =
+        `Orientation: ${arrows[pending.orientation]}` +
+        `  |  left-click grid to place  |  right-click to rotate`;
+    panel.appendChild(hint);
+
+    const discardBtn       = document.createElement('button');
+    discardBtn.textContent = 'Discard';
+    discardBtn.addEventListener('click', () => {
+        state = placeDomino(state, activeId, null);
+        pending = { row: null, col: null, orientation: 0 };
+        if (state.players.every(p => p.hasPlaced)) {
+            state = advanceRound(state);
+        }
+        render();
+    });
+    panel.appendChild(discardBtn);
+
+    return panel;
+}
+
 // ─── Root render ──────────────────────────────────────────────────────────────
 
 /**
-   * Returns the id of the player who should act next.
-   * - "first-claim" or no claimedDominos → state.firstClaimer
-   * - "placing": firstClaimer goes first (their hasPlaced is false first),
-   *   then the other player once firstClaimer.hasPlaced is true.
-   * - "final-place": same logic as placing.
-   * - "game-over": return 0 (doesn't matter).
-   * @param {import('./game-module1.js').GameState} state
-   * @returns {number}
-   */
-  function activePlayerId(state) {
-      // hint: check state.phase, then state.players[state.firstClaimer].hasPlaced
-  }
+ * Wipes #app and rebuilds the whole UI from state and pending.
+ *
+ * Layout:
+ *  1. Header — round, active player, New Game button
+ *  2. Both grids side by side; score table next to each grid;
+ *     each player's held domino shown below their grid
+ *  3. Claim panel  (when players have no held domino and nextDraft has slots)
+ *  4. Placing controls (orientation hint + Discard)
+ *  5. Game-over banner
+ */
+function render() {
+    // Auto-discard when the active player has no legal placements (grid full)
+    normalizeState();
 
-  ---
-  /**
-   * Builds one 9×9 grid <div> for a player.
-   * Each cell is a <div> coloured by TERRAIN_BG[terrain].
-   * If the cell has crowns > 0, put the count as text inside.
-   * If isActive is true AND state.phase is "placing" or "final-place":
-   *   clicking a cell sets pending.row and pending.col, then calls render().
-   * Highlight the cell at pending.row/col with a visible border or outline.
-   * @param {import('./game-module1.js').Player} player
-   * @param {boolean} isActive
-   * @returns {HTMLElement}
-   */
-  function buildGrid(player, isActive) {
-      // hint: create a wrapper div, use two nested for-loops (r then c)
-      // hint: cellDiv.addEventListener('click', ...) only when isActive
-  }
+    const app = document.querySelector('#app');
+    app.innerHTML = '';
 
-  ---
-  /**
-   * Builds a small domino preview: two half-cell <div>s side by side.
-   * Each half shows its terrain colour and crown count.
-   * @param {import('./game-module1.js').Domino} domino
-   * @returns {HTMLElement}
-   */
-  function buildDomino(domino) {
-      // hint: create a flex container, then two child divs using domino.left and domino.right
-  }
+    const activeId = activePlayerId(state);
 
-  ---
-  /**
-   * Builds the claim panel shown when players need to pick from nextDraft.
-   * Renders each DraftSlot in state.nextDraft as a clickable domino.
-   * Clicking slot i calls:
-   *   state = claimDomino(state, state.firstClaimer, i);
-   *   pending = { row: null, col: null, orientation: 0 };
-   *   render();
-   * @returns {HTMLElement}
-   */
-  function buildClaimPanel() {
-      // hint: iterate state.nextDraft with forEach or a for-loop
-      // hint: use buildDomino(slot.domino) inside each slot wrapper
-  }
+    // final-place with no held dominos → treat as game-over
+    const effectivePhase =
+        state.phase === 'final-place' &&
+        state.players.every(p => p.claimedDomino === null)
+            ? 'game-over'
+            : state.phase;
 
-  ---
-  /**
-   * Builds the placement controls for the active player:
-   *   - Four orientation buttons labelled →, ↓, ←, ↑ (orientations 0–3).
-   *     Clicking one sets pending.orientation and calls render().
-   *   - A "Place" button: calls placeDomino, then checks if both players
-   *     have hasPlaced === true → if so calls advanceRound. Then render().
-   *     Only enabled when pending.row !== null.
-   *   - A "Discard" button: calls placeDomino(state, activeId, null),
-   *     same advance check, then render().
-   * @param {number} activeId
-   * @returns {HTMLElement}
-   */
-  function buildControls(activeId) {
-      // hint: ['→','↓','←','↑'].forEach((label, o) => { ... })
-      // hint: for Place, the placement object is
-      //       { row: pending.row, col: pending.col, orientation: pending.orientation }
-  }
+    const needsToClaim =
+        effectivePhase !== 'game-over' &&
+        state.players.every(p => p.claimedDomino === null) &&
+        state.nextDraft.length > 0;
 
-  ---
-  /**
-   * Wipes #app and rebuilds the whole UI from scratch using `state` and `pending`.
-   *
-   * Layout order:
-   *  1. <h2> header — "Round X | Player N's turn | <phase>"
-   *  2. A row with both grids: buildGrid(state.players[0], ...) and buildGrid(state.players[1], ...)
-   *  3. If needs-to-claim (both claimedDomino null AND nextDraft has slots): buildClaimPanel()
-   *  4. Else if placing/final-place: show active player's held domino + buildControls(activeId)
-   *  5. If game-over: show both players' scores from scoreGrid()
-   */
-  function render() {
-      const app = document.querySelector('#app');
-      app.innerHTML = '';
-      // build and appendChild each section in order
-  }
+    // ── 1. Header ──
+    const header     = document.createElement('div');
+    header.className = 'header';
 
-  render(); // kick off the first render
+    const newGameBtn       = document.createElement('button');
+    newGameBtn.textContent = 'New Game';
+    newGameBtn.addEventListener('click', () => {
+        state = createInitialState();
+        pending = { row: null, col: null, orientation: 0 };
+        render();
+    });
+    header.appendChild(newGameBtn);
+
+    const info       = document.createElement('h2');
+    info.textContent = effectivePhase === 'game-over'
+        ? 'Game Over!'
+        : `Round ${state.round} — Player ${activeId + 1}'s turn`;
+    header.appendChild(info);
+    app.appendChild(header);
+
+    // ── 2. Grids + score tables + held dominos ──
+    const gridsRow     = document.createElement('div');
+    gridsRow.className = 'grids-row';
+
+    state.players.forEach(player => {
+        const isActive = player.id === activeId && effectivePhase !== 'game-over';
+        const wrapper  = document.createElement('div');
+        wrapper.className = 'grid-wrapper';
+
+        const label       = document.createElement('p');
+        label.className   = 'player-label';
+        label.textContent = `Player ${player.id + 1}`;
+        wrapper.appendChild(label);
+
+        // Grid and score table side by side
+        const gridAndTable     = document.createElement('div');
+        gridAndTable.className = 'grid-and-table';
+        gridAndTable.appendChild(buildGrid(player, isActive, activeId));
+        gridAndTable.appendChild(buildScoreTable(player));
+        wrapper.appendChild(gridAndTable);
+
+        // Held domino below the grid
+        if (player.claimedDomino && effectivePhase !== 'game-over') {
+            const holdLabel       = document.createElement('p');
+            holdLabel.className   = 'hold-label';
+            holdLabel.textContent = isActive
+                ? '▶ Your turn (left-click to place, right-click to rotate):'
+                : '⏳ Waiting:';
+            wrapper.appendChild(holdLabel);
+            wrapper.appendChild(buildDomino(player.claimedDomino));
+        }
+
+        gridsRow.appendChild(wrapper);
+    });
+
+    app.appendChild(gridsRow);
+
+    // ── 5. Game-over banner ──
+    if (effectivePhase === 'game-over') {
+        const banner     = document.createElement('div');
+        banner.className = 'game-over-banner';
+
+        const scores = state.players
+            .map(p => ({ id: p.id, score: scoreGrid(p.grid) }))
+            .sort((a, b) => b.score - a.score);
+
+        const winner = scores[0].score > scores[1].score
+            ? `Player ${scores[0].id + 1} wins!`
+            : 'It\'s a draw!';
+
+        const msg       = document.createElement('p');
+        msg.textContent = winner;
+        banner.appendChild(msg);
+
+        scores.forEach(({ id, score }) => {
+            const p       = document.createElement('p');
+            p.textContent = `Player ${id + 1}: ${score} points`;
+            banner.appendChild(p);
+        });
+
+        app.appendChild(banner);
+        return;
+    }
+
+    // ── 3. Claim panel ──
+    if (needsToClaim || effectivePhase === 'first-claim') {
+        app.appendChild(buildClaimPanel());
+        return;
+    }
+
+    // ── 4. Placing controls ──
+    if (effectivePhase === 'placing' || effectivePhase === 'final-place') {
+        const activePlayer = state.players.find(p => p.id === activeId);
+        if (activePlayer && activePlayer.claimedDomino) {
+            app.appendChild(buildControls(activeId));
+        }
+    }
+}
+
+render();

@@ -1,8 +1,262 @@
-body{
-    background: #f0ede6
-}
-*{
+* {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+}
+
+body {
+    background: #f0ede6;
+    font-family: sans-serif;
+    padding: 16px;
+}
+
+/* ── Header ── */
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.header h2 {
+    font-size: 1.3rem;
+}
+
+/* ── Grids ── */
+
+.grids-row {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.grid-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.player-label {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(9, 42px);
+    grid-template-rows: repeat(9, 42px);
+    gap: 1px;
+    background: #888;
+    border: 2px solid #888;
+}
+
+.grid--active {
+    border-color: #f5c400;
+    box-shadow: 0 0 10px #f5c400;
+}
+
+.cell {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    user-select: none;
+}
+
+/* Valid placement preview — green border */
+.cell--preview-ok {
+    outline: 3px solid #27ae60;
+    outline-offset: -3px;
+    position: relative;
+    z-index: 1;
+    opacity: 0.85;
+}
+
+/* Invalid placement preview — red border */
+.cell--preview-bad {
+    outline: 3px solid #e63900;
+    outline-offset: -3px;
+    position: relative;
+    z-index: 1;
+    opacity: 0.7;
+}
+
+/* ── Domino preview ── */
+
+.domino {
+    display: flex;
+    border: 2px solid #333;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.domino-half {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    user-select: none;
+}
+
+/* ── Claim panel ── */
+
+.claim-panel {
+    margin-bottom: 16px;
+}
+
+.claim-panel p {
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.slots-row {
+    display: flex;
+    gap: 16px;
+}
+
+.draft-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px;
+    background: #fff;
+    border: 2px solid #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.draft-slot p {
+    font-size: 0.85rem;
+    color: #555;
+}
+
+.draft-slot:hover {
+    border-color: #f5c400;
+    background: #fffbe6;
+}
+
+/* ── Placing section ── */
+
+.domino-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.domino-section p {
+    font-weight: bold;
+}
+
+/* ── Controls ── */
+
+.controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* ── Buttons ── */
+
+button {
+    padding: 8px 14px;
+    font-size: 1rem;
+    border: 2px solid #999;
+    background: #fff;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+    background: #f0ede6;
+    border-color: #555;
+}
+
+button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.btn--active {
+    background: #f5c400;
+    border-color: #c49b00;
+    font-weight: bold;
+}
+
+/* ── Hold label (under each player's grid) ── */
+
+.hold-label {
+    font-size: 0.85rem;
+    margin-top: 8px;
+    margin-bottom: 4px;
+    font-weight: bold;
+}
+
+/* ── Orientation hint in controls ── */
+
+.orient-label {
+    font-size: 0.9rem;
+    color: #444;
+    margin-right: 8px;
+}
+
+/* ── Grid + score table side by side ── */
+
+.grid-and-table {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+/* ── Score table ── */
+
+.score-table {
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    min-width: 150px;
+}
+
+.score-table th,
+.score-table td {
+    border: 1px solid #bbb;
+    padding: 3px 7px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.score-table thead th {
+    background: #e0dbd0;
+    font-weight: bold;
+}
+
+.score-table tfoot td {
+    background: #e0dbd0;
+    font-weight: bold;
+}
+
+.score-table tbody td:first-child {
+    text-align: left;
+}
+
+/* ── Game-over banner ── */
+
+.game-over-banner {
+    margin-top: 20px;
+    padding: 16px 24px;
+    background: #fff8e1;
+    border: 2px solid #f5c400;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 6px;
 }

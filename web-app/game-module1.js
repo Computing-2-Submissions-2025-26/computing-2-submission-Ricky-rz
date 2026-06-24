@@ -406,10 +406,11 @@ export function claimDomino(state, playerId, slotIndex) {
         ? playerId
         : 1 - playerId;
     return {
-        players: [
-            {... state.players[playerId], claimedDomino: myDomino, hasPlaced: false},
-            {... state.players[1 - playerId], claimedDomino: theirdomino, hasPlaced: false},
-        ],
+        players: state.players.map(p =>
+            p.id === playerId
+                ? {...p, claimedDomino: myDomino,    hasPlaced: false}
+                : {...p, claimedDomino: theirdomino, hasPlaced: false}
+        ),
         currentDraft: [],
         nextDraft: [],
         deck: state.deck,
@@ -431,8 +432,9 @@ export function claimDomino(state, playerId, slotIndex) {
    * @returns {GameState}
    */
 export function placeDomino(state, playerId, placement) {
-    const domino = state.players[playerId].claimedDomino;
-    const grid   = state.players[playerId].grid;
+    const player = state.players.find(p => p.id === playerId);
+    const domino = player.claimedDomino;
+    const grid   = player.grid;
 
     if (domino === null) {
         throw new Error("No domino to place");
