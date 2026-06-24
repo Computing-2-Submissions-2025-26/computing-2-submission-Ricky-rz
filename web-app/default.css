@@ -247,6 +247,53 @@ button:disabled {
     text-align: left;
 }
 
+/* ── Setup screen ── */
+
+.setup-screen {
+    max-width: 400px;
+    margin: 60px auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.setup-screen h1 {
+    font-size: 2rem;
+    text-align: center;
+    letter-spacing: 0.05em;
+}
+
+.setup-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.setup-field label {
+    font-weight: bold;
+}
+
+.setup-field input {
+    padding: 8px;
+    font-size: 1rem;
+    border: 2px solid #999;
+    border-radius: 5px;
+}
+
+.setup-field input:disabled {
+    background: #eee;
+    color: #888;
+}
+
+.setup-mode {
+    display: flex;
+    gap: 12px;
+}
+
+.setup-mode button {
+    flex: 1;
+}
+
 /* ── Game-over banner ── */
 
 .game-over-banner {

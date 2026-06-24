@@ -33,6 +33,15 @@ let state = createInitialState();
  */
 let pending = { row: null, col: null, orientation: 0 };
 
+/** @type {'setup'|'game'} */
+let appScreen = 'setup';
+
+/** @type {string[]} Names for player 0 and player 1. */
+let playerNames = ['Player 1', 'Player 2'];
+
+/** @type {'2p'|'vs-ai'} */
+let gameMode = '2p';
+
 // ─── Terrain display maps ─────────────────────────────────────────────────────
 
 /** @type {Record<import('./game-module1.js').Terrain, string>} */
@@ -416,7 +425,7 @@ function buildClaimPanel() {
     panel.className   = 'claim-panel';
 
     const title       = document.createElement('p');
-    title.textContent = `Player ${state.firstClaimer + 1}: pick a domino`;
+    title.textContent = `${playerNames[state.firstClaimer]}: pick a domino`;
     panel.appendChild(title);
 
     const row       = document.createElement('div');
@@ -477,6 +486,35 @@ function buildControls(activeId) {
     return panel;
 }
 
+// ─── Setup screen ────────────────────────────────────────────────────────────
+
+/**
+ * Builds the start-of-game setup screen.
+ * Player names and game mode are written to module-level variables on "Start".
+ * @returns {HTMLElement}
+ */
+function buildSetupScreen() {
+    const screen       = document.createElement('div');
+    screen.className   = 'setup-screen';
+
+    const title       = document.createElement('h1');
+    title.textContent = 'Kingdomino';
+    screen.appendChild(title);
+
+    // ── Player 1 name ──
+    const p1field     = document.createElement('div');
+    p1field.className = 'setup-field';
+    const p1label       = document.createElement('label');
+    p1label.textContent = 'Player 1 name';
+    const p1input   = document.createElement('input');
+    p1input.type    = 'text';
+    p1input.value   = playerNames[0];
+    p1field.appendChild(p1label);
+    p1field.appendChild(p1input);
+    screen.appendChild(p1field);
+
+}
+
 // ─── Root render ──────────────────────────────────────────────────────────────
 
 /**
@@ -491,11 +529,16 @@ function buildControls(activeId) {
  *  5. Game-over banner
  */
 function render() {
-    // Auto-discard when the active player has no legal placements (grid full)
-    normalizeState();
-
     const app = document.querySelector('#app');
     app.innerHTML = '';
+
+    if (appScreen === 'setup') {
+        app.appendChild(buildSetupScreen());
+        return;
+    }
+
+    // Auto-discard when the active player has no legal placements (grid full)
+    normalizeState();
 
     const activeId = activePlayerId(state);
 
@@ -518,8 +561,8 @@ function render() {
     const newGameBtn       = document.createElement('button');
     newGameBtn.textContent = 'New Game';
     newGameBtn.addEventListener('click', () => {
-        state = createInitialState();
-        pending = { row: null, col: null, orientation: 0 };
+        appScreen = 'setup';
+        pending   = { row: null, col: null, orientation: 0 };
         render();
     });
     header.appendChild(newGameBtn);
@@ -527,7 +570,7 @@ function render() {
     const info       = document.createElement('h2');
     info.textContent = effectivePhase === 'game-over'
         ? 'Game Over!'
-        : `Round ${state.round} — Player ${activeId + 1}'s turn`;
+        : `Round ${state.round} — ${playerNames[activeId]}'s turn`;
     header.appendChild(info);
     app.appendChild(header);
 
@@ -542,7 +585,7 @@ function render() {
 
         const label       = document.createElement('p');
         label.className   = 'player-label';
-        label.textContent = `Player ${player.id + 1}`;
+        label.textContent = playerNames[player.id];
         wrapper.appendChild(label);
 
         // Grid and score table side by side
@@ -587,7 +630,7 @@ function render() {
 
         scores.forEach(({ id, score }) => {
             const p       = document.createElement('p');
-            p.textContent = `Player ${id + 1}: ${score} points`;
+            p.textContent = `${playerNames[id]}: ${score} points`;
             banner.appendChild(p);
         });
 
