@@ -28,6 +28,56 @@ body {
     font-size: 1.3rem;
 }
 
+/* ── Round tracker ── */
+
+.round-tracker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.round-tracker__label {
+    font-weight: bold;
+    font-size: 0.85rem;
+    color: #555;
+    margin-right: 4px;
+}
+
+.round-dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    border: 2px solid #ccc;
+    flex-shrink: 0;
+}
+
+.round-dot--done {
+    background: #888;
+    border-color: #666;
+    color: #fff;
+}
+
+.round-dot--active {
+    background: #f5c400;
+    border-color: #c49b00;
+    color: #333;
+    box-shadow: 0 0 8px #f5c400;
+    transform: scale(1.15);
+}
+
+.round-dot--future {
+    background: #fff;
+    border-color: #ddd;
+    color: #bbb;
+}
+
 /* ── Grids ── */
 
 .grids-row {
@@ -282,7 +332,6 @@ button:disabled {
 
 .cell--faint {
     opacity: 0.18;
-    pointer-events: none;
 }
 
 /* ── Focus layout (placing phase) ── */

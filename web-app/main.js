@@ -206,12 +206,20 @@ function getKingdomBounds(grid) {
             }
         }
     }
-    // Centre a 5×5 window on the kingdom midpoint, clamped so it stays on the grid
-    const midR = Math.round((minR + maxR) / 2);
-    const midC = Math.round((minC + maxC) / 2);
-    minR = Math.max(0, Math.min(4, midR - 2));
-    minC = Math.max(0, Math.min(4, midC - 2));
-    return { minR, maxR: minR + 4, minC, maxC: minC + 4 };
+    // Padding added to EACH side based on tight span:
+    //   span 1–3  →  2 on each side
+    //   span 4    →  1 on each side
+    //   span 5    →  0
+    function expandAxis(lo, hi) {
+        const span = hi - lo + 1;
+        const pad  = span <= 3 ? 2 : span === 4 ? 1 : 0;
+        lo = Math.max(0, lo - pad);
+        hi = Math.min(8, hi + pad);
+        return [lo, hi];
+    }
+    [minR, maxR] = expandAxis(minR, maxR);
+    [minC, maxC] = expandAxis(minC, maxC);
+    return { minR, maxR, minC, maxC };
 }
 
 // ─── DOM builder functions ────────────────────────────────────────────────────
@@ -310,9 +318,6 @@ function buildGrid(player, isActive, activeId, size = 'normal') {
             const r = Math.floor((e.clientY - rect.top)  / (rect.height / 9));
             const c = Math.floor((e.clientX - rect.left) / (rect.width  / 9));
             if (r >= 0 && r < 9 && c >= 0 && c < 9) {
-                // Skip cells outside the 5×5 kingdom (they are faint)
-                if (r < bounds.minR || r > bounds.maxR ||
-                    c < bounds.minC || c > bounds.maxC) { return; }
                 if (pending.row !== r || pending.col !== c) {
                     pending.row = r;
                     pending.col = c;
@@ -637,6 +642,37 @@ function buildSetupScreen() {
     return screen;
 }
 
+// ─── Round tracker ───────────────────────────────────────────────────────────
+
+/**
+ * Builds a row of 12 numbered dots showing game progress.
+ * Completed rounds are grey, the current round is gold, future rounds are empty.
+ * @param {'first-claim'|'placing'|'final-place'|'game-over'} effectivePhase
+ * @returns {HTMLElement}
+ */
+function buildRoundTracker(effectivePhase) {
+    const TOTAL_ROUNDS = 12;
+    const nav       = document.createElement('div');
+    nav.className   = 'round-tracker';
+
+    const label       = document.createElement('span');
+    label.className   = 'round-tracker__label';
+    label.textContent = 'Rounds:';
+    nav.appendChild(label);
+
+    for (let r = 1; r <= TOTAL_ROUNDS; r++) {
+        const dot     = document.createElement('div');
+        const isDone  = effectivePhase === 'game-over' || r < state.round;
+        const isNow   = effectivePhase !== 'game-over' && r === state.round;
+        dot.className = 'round-dot' +
+            (isDone ? ' round-dot--done' : isNow ? ' round-dot--active' : ' round-dot--future');
+        dot.textContent = r;
+        nav.appendChild(dot);
+    }
+
+    return nav;
+}
+
 // ─── Root render ──────────────────────────────────────────────────────────────
 
 /**
@@ -700,6 +736,7 @@ function render() {
         : `Round ${state.round} — ${playerNames[activeId]}'s turn`;
     header.appendChild(info);
     app.appendChild(header);
+    app.appendChild(buildRoundTracker(effectivePhase));
 
     // ── Game-over: normal side-by-side layout + banner ──
     if (effectivePhase === 'game-over') {
