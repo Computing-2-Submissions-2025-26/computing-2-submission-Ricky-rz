@@ -577,6 +577,11 @@ function buildSetupScreen() {
     title.textContent = 'Kingdomino';
     screen.appendChild(title);
 
+    const sub       = document.createElement('p');
+    sub.className   = 'setup-subtitle';
+    sub.textContent = 'Build your kingdom — domino by domino';
+    screen.appendChild(sub);
+
     // ── Player 1 name ──
     const p1field     = document.createElement('div');
     p1field.className = 'setup-field';
@@ -721,6 +726,17 @@ function render() {
     const header     = document.createElement('div');
     header.className = 'header';
 
+    const logo       = document.createElement('span');
+    logo.className   = 'header__logo';
+    logo.textContent = 'Kingdomino';
+    header.appendChild(logo);
+
+    const info       = document.createElement('h2');
+    info.textContent = effectivePhase === 'game-over'
+        ? 'Game Over!'
+        : `Round ${state.round} / 12 — ${playerNames[activeId]}'s turn`;
+    header.appendChild(info);
+
     const newGameBtn       = document.createElement('button');
     newGameBtn.textContent = 'New Game';
     newGameBtn.addEventListener('click', () => {
@@ -729,12 +745,6 @@ function render() {
         render();
     });
     header.appendChild(newGameBtn);
-
-    const info       = document.createElement('h2');
-    info.textContent = effectivePhase === 'game-over'
-        ? 'Game Over!'
-        : `Round ${state.round} — ${playerNames[activeId]}'s turn`;
-    header.appendChild(info);
     app.appendChild(header);
     app.appendChild(buildRoundTracker(effectivePhase));
 

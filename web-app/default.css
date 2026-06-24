@@ -123,7 +123,6 @@ body {
     user-select: none;
 }
 
-/* Valid placement preview — green border */
 .cell--preview-ok {
     outline: 3px solid #27ae60;
     outline-offset: -3px;
@@ -132,13 +131,16 @@ body {
     opacity: 0.85;
 }
 
-/* Invalid placement preview — red border */
 .cell--preview-bad {
     outline: 3px solid #e63900;
     outline-offset: -3px;
     position: relative;
     z-index: 1;
     opacity: 0.7;
+}
+
+.cell--faint {
+    opacity: 0.18;
 }
 
 /* ── Domino preview ── */
@@ -198,19 +200,6 @@ body {
     background: #fffbe6;
 }
 
-/* ── Placing section ── */
-
-.domino-section {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 12px;
-}
-
-.domino-section p {
-    font-weight: bold;
-}
-
 /* ── Controls ── */
 
 .controls {
@@ -247,7 +236,7 @@ button:disabled {
     font-weight: bold;
 }
 
-/* ── Hold label (under each player's grid) ── */
+/* ── Hold label ── */
 
 .hold-label {
     font-size: 0.85rem;
@@ -256,7 +245,7 @@ button:disabled {
     font-weight: bold;
 }
 
-/* ── Orientation hint in controls ── */
+/* ── Orientation hint ── */
 
 .orient-label {
     font-size: 0.9rem;
@@ -302,20 +291,20 @@ button:disabled {
     text-align: left;
 }
 
-/* ── Large grid (active player during placing) ── */
+/* ── Large grid ── */
 
 .grid--large {
-    grid-template-columns: repeat(9, 54px);
-    grid-template-rows:    repeat(9, 54px);
+    grid-template-columns: repeat(9, 52px);
+    grid-template-rows:    repeat(9, 52px);
 }
 
 .grid--large .cell {
-    width:     54px;
-    height:    54px;
-    font-size: 22px;
+    width:     52px;
+    height:    52px;
+    font-size: 20px;
 }
 
-/* ── Small grid (opponent during placing) ── */
+/* ── Small grid ── */
 
 .grid--small {
     grid-template-columns: repeat(9, 28px);
@@ -328,23 +317,17 @@ button:disabled {
     font-size: 11px;
 }
 
-/* ── Faint cells (outside 5×5 kingdom bounding box) ── */
-
-.cell--faint {
-    opacity: 0.18;
-}
-
-/* ── Focus layout (placing phase) ── */
+/* ── Focus layout ── */
 
 .layout--placing {
     display:     flex;
-    gap:         32px;
+    gap:         24px;
     align-items: flex-start;
     margin-bottom: 20px;
 }
 
 .opponent-panel {
-    width:       280px;
+    width:       260px;
     flex-shrink: 0;
     display:     flex;
     flex-direction: column;
@@ -358,7 +341,7 @@ button:disabled {
     gap:     12px;
 }
 
-/* ── End-turn handoff screen ── */
+/* ── End-turn screen ── */
 
 .end-turn-screen {
     max-width: 420px;
@@ -393,7 +376,6 @@ button:disabled {
 .setup-screen h1 {
     font-size: 2rem;
     text-align: center;
-    letter-spacing: 0.05em;
 }
 
 .setup-field {
