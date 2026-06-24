@@ -22,6 +22,10 @@ body {
     align-items: center;
     gap: 16px;
     margin-bottom: 20px;
+    padding: 12px 20px;
+    background: #23213a;
+    border: 1px solid #38365a;
+    border-radius: 10px;
 }
 
 .header h2 {
@@ -36,6 +40,10 @@ body {
     gap: 6px;
     flex-wrap: wrap;
     margin-bottom: 20px;
+    padding: 10px 16px;
+    background: #23213a;
+    border: 1px solid #38365a;
+    border-radius: 10px;
 }
 
 .round-tracker__label {
@@ -103,9 +111,11 @@ body {
     display: grid;
     grid-template-columns: repeat(9, 42px);
     grid-template-rows: repeat(9, 42px);
-    gap: 1px;
-    background: #888;
-    border: 2px solid #888;
+    gap: 2px;
+    background: #0a0916;
+    border: 3px solid #38365a;
+    border-radius: 6px;
+    padding: 3px;
 }
 
 .grid--active {
@@ -183,21 +193,22 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    padding: 10px;
-    background: #fff;
-    border: 2px solid #ccc;
-    border-radius: 6px;
+    padding: 12px 16px;
+    background: #2d2b48;
+    border: 2px solid #38365a;
+    border-radius: 8px;
     cursor: pointer;
 }
 
 .draft-slot p {
     font-size: 0.85rem;
-    color: #555;
+    color: #9997b0;
+    font-weight: bold;
 }
 
 .draft-slot:hover {
     border-color: #f5c400;
-    background: #fffbe6;
+    background: #3a3760;
 }
 
 /* ── Controls ── */
@@ -214,15 +225,16 @@ body {
 button {
     padding: 8px 14px;
     font-size: 1rem;
-    border: 2px solid #999;
-    background: #fff;
+    border: 2px solid #38365a;
+    background: #23213a;
+    color: #e8e4f8;
     border-radius: 5px;
     cursor: pointer;
 }
 
 button:hover:not(:disabled) {
-    background: #f0ede6;
-    border-color: #555;
+    border-color: #f5c400;
+    color: #f5c400;
 }
 
 button:disabled {
@@ -271,20 +283,27 @@ button:disabled {
 
 .score-table th,
 .score-table td {
-    border: 1px solid #bbb;
+    border: 1px solid #38365a;
     padding: 3px 7px;
     text-align: center;
     white-space: nowrap;
+    color: #e8e4f8;
+}
+
+.score-table tbody tr {
+    background: #23213a;
 }
 
 .score-table thead th {
-    background: #e0dbd0;
+    background: #2d2b48;
     font-weight: bold;
+    color: #9997b0;
 }
 
 .score-table tfoot td {
-    background: #e0dbd0;
+    background: #2d2b48;
     font-weight: bold;
+    color: #f5c400;
 }
 
 .score-table tbody td:first-child {
@@ -351,6 +370,10 @@ button:disabled {
     align-items: center;
     gap: 28px;
     text-align: center;
+    padding: 44px 36px;
+    background: #23213a;
+    border: 1px solid #38365a;
+    border-radius: 16px;
 }
 
 .end-turn-screen p {
@@ -371,6 +394,10 @@ button:disabled {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    padding: 36px;
+    background: #23213a;
+    border: 1px solid #38365a;
+    border-radius: 16px;
 }
 
 .setup-screen h1 {
@@ -391,8 +418,10 @@ button:disabled {
 .setup-field input {
     padding: 8px;
     font-size: 1rem;
-    border: 2px solid #999;
+    border: 2px solid #38365a;
     border-radius: 5px;
+    background: #2d2b48;
+    color: #e8e4f8;
 }
 
 .setup-field input:disabled {
