@@ -3,11 +3,11 @@
  * DOM layer for the 2-player Kingdomino web app.
  *
  * Responsibilities:
- *   - Import pure game logic from ./game-module1.js
+ *   - Import pure game logic from ./Module.js
  *   - Maintain one mutable `state` reference and one `pending` placement object
  *   - Re-render the entire UI after every user action
  *
- * No game logic lives here — all rules are enforced by game-module1.
+ * No game logic lives here — all rules are enforced by Module.js.
  */
 
 import {
@@ -76,6 +76,7 @@ const DARK_TERRAINS = new Set(['forest', 'water', 'swamp', 'mine']);
 /**
  * Accent / muted colours keyed by player id.
  * Player 0 = red, Player 1 = blue.
+ * @type {{ accent: string, muted: string, border: string, castle: string }[]}
  */
 const PLAYER_COLORS = [
     { accent: '#e05555', muted: 'rgba(170, 40, 40, 0.18)', border: '#a03030', castle: '#c47878' },
@@ -580,38 +581,6 @@ function buildSidePanel(isClaiming, rightId, isActivePlacing) {
     return panel;
 }
 
-/**
- * Builds the placing controls: orientation hint + Discard button.
- * Placement is done by left-clicking the grid.
- * @param {number} activeId
- * @returns {HTMLElement}
- */
-function buildControls(activeId) {
-    const panel     = document.createElement('div');
-    panel.className = 'controls';
-
-    const hint       = document.createElement('span');
-    hint.className   = 'orient-label';
-    const arrows     = ['→', '↓', '←', '↑'];
-    hint.textContent =
-        `Orientation: ${arrows[pending.orientation]}` +
-        `  |  left-click grid to place  |  right-click to rotate`;
-    panel.appendChild(hint);
-
-    const discardBtn       = document.createElement('button');
-    discardBtn.textContent = 'Discard';
-    discardBtn.addEventListener('click', () => {
-        state = placeDomino(state, activeId, null);
-        pending = { row: null, col: null, orientation: 0 };
-        if (state.players.every(p => p.hasPlaced)) {
-            state = advanceRound(state);
-        }
-        render();
-    });
-    panel.appendChild(discardBtn);
-
-    return panel;
-}
 
 
 // ─── Instructions screen ─────────────────────────────────────────────────────
@@ -839,14 +808,15 @@ function buildRoundTracker(effectivePhase) {
 // ─── Root render ──────────────────────────────────────────────────────────────
 
 /**
- * Wipes #app and rebuilds the whole UI from state and pending.
+ * Wipes #app and rebuilds the whole UI from `state` and `pending`.
  *
  * Layout (game screen):
  *  1. Header — round, active player, New Game button
- *  2. Two-column focus layout:
- *       Left col  — opponent's small grid + score table (+ claim panel when needed)
- *       Right col — active player's large grid + controls + score table
- *  3. Game-over banner
+ *  2. Round tracker — 12 dots showing progress
+ *  3. Two-column focus layout:
+ *       Left col  — opponent's small grid + score table
+ *       Right col — active player's grid + side panel (dominos + controls) + score table
+ *  4. Game-over banner (when phase is game-over)
  */
 function render() {
     const app = document.querySelector('#app');

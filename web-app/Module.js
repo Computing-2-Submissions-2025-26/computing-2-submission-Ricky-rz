@@ -1,5 +1,5 @@
 /**
- * @file game-module.js
+ * @file Module.js
  * Pure-function Kingdomino engine for 2 players.
  * All exported functions return new state objects and never mutate their inputs.
  */
@@ -59,10 +59,9 @@ const DECK_SIZE    = 48; // full deck; each game randomly picks 24
 
 /**
  * @typedef {object} Placement
- * @property {number}                   row         - Row of the **first** half-tile
- * @property {number}                   col         - Column of the **first** half-tile
- * @property {"horizontal"|"vertical"}  orientation - Direction of the second half
- * @property {boolean}                  flipped     - When `true`, the right half is placed first
+ * @property {number} row         - Row of the first half-tile
+ * @property {number} col         - Column of the first half-tile
+ * @property {number} orientation - Direction of the second half: 0=right, 1=down, 2=left, 3=up
  */
 
 /**
@@ -71,16 +70,16 @@ const DECK_SIZE    = 48; // full deck; each game randomly picks 24
  * Phase transition diagram:
  * ```
  * first-claim
- *   └─ (all claims done) → place-and-claim
- *                              └─ (deck exhausted after last claim) → final-place
- *                                                                         └─ (all placed) → game-over
+ *   └─ (both players claimed) → placing
+ *                                   └─ (deck empty after both place) → final-place
+ *                                   │                                      └─ (both placed) → game-over
+ *                                   └─ (deck has tiles) → placing (next round)
  * ```
  *
- * - **first-claim**     Round 1: both players claim from `nextDraft`; no domino held yet.
- * - **place-and-claim** Rounds 2–N: active player places their held domino, then claims
- *                       from `nextDraft`; repeat per player.
- * - **final-place**     Deck exhausted: each player places their last held domino (no claim).
- * - **game-over**       All dominoes placed; call {@link scoreGrid} for final scores.
+ * - **first-claim**  Round 1 only: both players claim from `nextDraft`; no domino held yet.
+ * - **placing**      Each player places their held domino; new `nextDraft` drawn each round.
+ * - **final-place**  Deck exhausted: each player places their last held domino (no new claim).
+ * - **game-over**    All dominoes placed; call {@link scoreGrid} for final scores.
  */
 
 /**
@@ -91,7 +90,7 @@ const DECK_SIZE    = 48; // full deck; each game randomly picks 24
  * @property {Domino[]}    deck          - Remaining shuffled dominoes not yet drawn
  * @property {Phase}       phase         - Current phase of the game
  * @property {number}      round         - 1-based round counter (1–12)
- * @property {number}      firstClaimer  - pl;ayerId who picks first this round
+ * @property {number}      firstClaimer  - playerId who picks first this round
  */
 
 // ─── Domino deck data (official full 48-tile set) ────────────────────────────
@@ -177,9 +176,8 @@ function shuffle(arr){
 }
 
 /**
- * Create a 9x9 grid with the castle in the centre and all of the other cells empty.
- * @typedef {cell[][]} Grid
- * A 9×9 row-major array of cells
+ * Creates a 9×9 grid with the castle at the centre and all other cells empty.
+ * @returns {Grid}
  */
 function makeGrid() {
     const grid =Array.from({ length: GRID_SIZE }, () =>
@@ -190,12 +188,13 @@ function makeGrid() {
 }
 
 /**
- * takes (domino, placement) and returns two row, col and half
- * @returns {Array.<{row: number, col: number, half: Cell}>}
+ * Returns the two cells that a domino would occupy given a position and orientation.
+ * The first entry is the left half, the second is the right half.
  * @param {Domino} domino
- * @param {number} orientation
- * @param {Grid} grid
- * 0,1,2,3 for orientation and left or right for half
+ * @param {number} row         - Row of the first (left) half-tile
+ * @param {number} col         - Column of the first (left) half-tile
+ * @param {number} orientation - 0=right, 1=down, 2=left, 3=up
+ * @returns {Array.<{row: number, col: number, half: Cell}>}
  */
  function getPlacedCells(domino, row, col, orientation) {
       let r, c;
@@ -289,10 +288,13 @@ function fitsInKingdom(grid, cells) {
 }
 
 /**
- * scoring engine, calculates the score of a grid by finding connected
- * components of matching terrain and multiplying their size by their crowns
- * @returns {number}
- * @param {Grid} grid
+ * Flood-fills a single connected region of matching terrain starting from
+ * (startRow, startCol), marks all visited cells, and returns the collected cells.
+ * @param {Grid}      grid
+ * @param {number}    startRow - Row index of the seed cell
+ * @param {number}    startCol - Column index of the seed cell
+ * @param {boolean[][]} visited - Shared visited matrix; updated in place
+ * @returns {Cell[]} All cells belonging to this region
  */
 function floodFillRegion(grid, startRow, startCol, visited) {
     const terrain = grid[startRow][startCol].terrain;
@@ -393,7 +395,7 @@ export function findLegalPlacements(grid, domino, orientation) {
 * Draws the next DRAFT_SIZE dominoes from the deck, sorts them by number,
 * and wraps each in a DraftSlot with claimedBy: null.
 * @param {Domino[]} deck
-* @returns {{ slots: DraftSlot[], remaining: Domino[] }}
+* @returns {{ slots: DraftSlot[], remain: Domino[] }}
 */
 export function getNextDraft(deck) {
     const drawn = deck.slice(0, DRAFT_SIZE).sort((a, b) => a.number - b.number);
@@ -427,7 +429,7 @@ export function createInitialState() {
 }
 
 /**
-* Active player claims a slot; thge other player is auto-assigned
+* Active player claims a slot; the other player is auto-assigned
 * @param {GameState} state
 * @param {number} playerId
 * @param {number} slotIndex 0 or 1
