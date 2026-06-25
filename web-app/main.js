@@ -78,8 +78,8 @@ const DARK_TERRAINS = new Set(['forest', 'water', 'swamp', 'mine']);
  * Player 0 = red, Player 1 = blue.
  */
 const PLAYER_COLORS = [
-    { accent: '#e05555', muted: 'rgba(170, 40, 40, 0.18)', border: '#a03030' },
-    { accent: '#5588e0', muted: 'rgba(40, 80, 200, 0.18)', border: '#2860c0' },
+    { accent: '#e05555', muted: 'rgba(170, 40, 40, 0.18)', border: '#a03030', castle: '#c47878' },
+    { accent: '#5588e0', muted: 'rgba(40, 80, 200, 0.18)', border: '#2860c0', castle: '#7090c8' },
 ];
 
 // ─── Pure helper functions ────────────────────────────────────────────────────
@@ -312,7 +312,9 @@ function buildGrid(player, isActive, activeId, size = 'normal') {
                 div.classList.add(validPlace ? 'cell--preview-ok' : 'cell--preview-bad');
 
             } else {
-                div.style.background = TERRAIN_BG[cell.terrain];
+                div.style.background = cell.terrain === 'castle'
+                    ? PLAYER_COLORS[player.id].castle
+                    : TERRAIN_BG[cell.terrain];
                 if (cell.crowns > 0) {
                     div.textContent = '👑'.repeat(cell.crowns);
                 } else if (TERRAIN_ICON[cell.terrain]) {
