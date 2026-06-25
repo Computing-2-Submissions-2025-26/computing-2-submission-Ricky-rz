@@ -33,8 +33,8 @@ let state = createInitialState();
  */
 let pending = { row: null, col: null, orientation: 0 };
 
-/** @type {'setup'|'game'} */
-let appScreen = 'setup';
+/** @type {'instructions'|'setup'|'game'} */
+let appScreen = 'instructions';
 
 /** @type {string[]} Names for player 0 and player 1. */
 let playerNames = ['Player 1', 'Player 2'];
@@ -562,6 +562,111 @@ function buildEndTurnScreen(nextPlayerId) {
     return screen;
 }
 
+// ─── Instructions screen ─────────────────────────────────────────────────────
+
+/**
+ * Builds the how-to-play instructions screen shown on first load.
+ * @returns {HTMLElement}
+ */
+function buildInstructionsScreen() {
+    const screen       = document.createElement('div');
+    screen.className   = 'instructions-screen';
+
+    const title       = document.createElement('h1');
+    title.textContent = 'Kingdomino';
+    screen.appendChild(title);
+
+    const sub       = document.createElement('p');
+    sub.className   = 'instructions-sub';
+    sub.textContent = 'Build the best kingdom — domino by domino';
+    screen.appendChild(sub);
+
+    const rules = [
+        {
+            icon: '🎯',
+            heading: 'Goal',
+            body: 'Score the most points. The game lasts 12 rounds — each round you pick and place one domino.',
+        },
+        {
+            icon: '🃏',
+            heading: 'The Draft',
+            body: 'Each round two dominoes are on offer. Pick one. The lower the tile number, the sooner you go next round.',
+        },
+        {
+            icon: '🏗️',
+            heading: 'Placing',
+            body: 'Your domino must touch your castle or a tile of matching terrain. Your kingdom can never grow beyond 5×5.',
+        },
+        {
+            icon: '👑',
+            heading: 'Scoring',
+            body: 'At the end: connected region size × crowns in that region. Bigger groups with more crowns score most.',
+        },
+    ];
+
+    const grid       = document.createElement('div');
+    grid.className   = 'instructions-grid';
+
+    rules.forEach(({ icon, heading, body }) => {
+        const card       = document.createElement('div');
+        card.className   = 'instructions-card';
+
+        const iconEl       = document.createElement('div');
+        iconEl.className   = 'instructions-card__icon';
+        iconEl.textContent = icon;
+        card.appendChild(iconEl);
+
+        const h       = document.createElement('h3');
+        h.textContent = heading;
+        card.appendChild(h);
+
+        const p       = document.createElement('p');
+        p.textContent = body;
+        card.appendChild(p);
+
+        grid.appendChild(card);
+    });
+    screen.appendChild(grid);
+
+    // Terrain colour key
+    const keyLabel       = document.createElement('p');
+    keyLabel.className   = 'instructions-key-label';
+    keyLabel.textContent = 'Terrain types';
+    screen.appendChild(keyLabel);
+
+    const terrains = [
+        { terrain: 'wheat',  label: 'Wheat',  bg: '#f5d060', dark: false },
+        { terrain: 'forest', label: 'Forest', bg: '#2e7d32', dark: true  },
+        { terrain: 'water',  label: 'Water',  bg: '#1565c0', dark: true  },
+        { terrain: 'grass',  label: 'Grass',  bg: '#7cb342', dark: false },
+        { terrain: 'swamp',  label: 'Swamp',  bg: '#6d4c41', dark: true  },
+        { terrain: 'mine',   label: 'Mine',   bg: '#546e7a', dark: true  },
+    ];
+
+    const keyRow       = document.createElement('div');
+    keyRow.className   = 'instructions-key';
+    terrains.forEach(({ label, bg, dark }) => {
+        const chip       = document.createElement('div');
+        chip.className   = 'instructions-chip';
+        chip.textContent = label;
+        chip.style.background = bg;
+        chip.style.color      = dark ? '#fff' : '#1a1828';
+        keyRow.appendChild(chip);
+    });
+    screen.appendChild(keyRow);
+
+    const btn       = document.createElement('button');
+    btn.className   = 'btn--active instructions-btn';
+    btn.textContent = "Let's Play!";
+    btn.addEventListener('click', () => {
+        appScreen = 'setup';
+        render();
+    });
+    screen.appendChild(btn);
+
+    return screen;
+}
+
 // ─── Setup screen ────────────────────────────────────────────────────────────
 
 /**
@@ -694,6 +799,11 @@ function buildRoundTracker(effectivePhase) {
 function render() {
     const app = document.querySelector('#app');
     app.innerHTML = '';
+
+    if (appScreen === 'instructions') {
+        app.appendChild(buildInstructionsScreen());
+        return;
+    }
 
     if (appScreen === 'setup') {
         app.appendChild(buildSetupScreen());
