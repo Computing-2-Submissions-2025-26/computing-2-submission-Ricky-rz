@@ -4,7 +4,7 @@
  * All exported functions return new state objects and never mutate their inputs.
  */
 
-/*jslint browser, for, long, unordered*/
+
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
