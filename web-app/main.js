@@ -42,8 +42,7 @@ let playerNames = ['Player 1', 'Player 2'];
 /** @type {'2p'|'vs-ai'} */
 let gameMode = '2p';
 
-/** True after one player places but before the other player's turn begins. */
-let pendingEndTurn = false;
+
 
 // ─── Terrain display maps ─────────────────────────────────────────────────────
 
@@ -73,6 +72,15 @@ const TERRAIN_ICON = {
 
 /** Terrains whose icon needs white text to be readable. */
 const DARK_TERRAINS = new Set(['forest', 'water', 'swamp', 'mine']);
+
+/**
+ * Accent / muted colours keyed by player id.
+ * Player 0 = red, Player 1 = blue.
+ */
+const PLAYER_COLORS = [
+    { accent: '#e05555', muted: 'rgba(170, 40, 40, 0.18)', border: '#a03030' },
+    { accent: '#5588e0', muted: 'rgba(40, 80, 200, 0.18)', border: '#2860c0' },
+];
 
 // ─── Pure helper functions ────────────────────────────────────────────────────
 
@@ -246,6 +254,12 @@ function buildGrid(player, isActive, activeId, size = 'normal') {
                     : size === 'small' ? ' grid--small' : '';
     grid.className = 'grid' + (isActive ? ' grid--active' : '') + sizeClass;
 
+    if (isActive) {
+        const col = PLAYER_COLORS[player.id];
+        grid.style.borderColor = col.border;
+        grid.style.boxShadow   = `0 0 24px ${col.muted}`;
+    }
+
     const bounds = getKingdomBounds(player.grid);
 
     const canInteract = isActive &&
@@ -348,8 +362,6 @@ function buildGrid(player, isActive, activeId, size = 'normal') {
             pending = { row: null, col: null, orientation: 0 };
             if (state.players.every(p => p.hasPlaced)) {
                 state = advanceRound(state);
-            } else {
-                pendingEndTurn = true;
             }
             render();
         });
@@ -460,17 +472,22 @@ function buildDomino(domino) {
 }
 
 /**
- * Builds the claim panel — shown when players need to pick from nextDraft.
- * Clicking a slot calls claimDomino for state.firstClaimer; the other player
+ * Builds the claim panel tinted with the claiming player's colour.
+ * Clicking a slot calls claimDomino for claimerId; the other player
  * is auto-assigned the remaining slot.
+ * @param {number} claimerId
  * @returns {HTMLElement}
  */
-function buildClaimPanel() {
+function buildClaimPanel(claimerId) {
+    const col         = PLAYER_COLORS[claimerId];
     const panel       = document.createElement('div');
     panel.className   = 'claim-panel';
+    panel.style.background  = col.muted;
+    panel.style.borderColor = col.border;
 
     const title       = document.createElement('p');
-    title.textContent = `${playerNames[state.firstClaimer]}: pick a domino`;
+    title.textContent = `${playerNames[claimerId]}: pick a domino`;
+    title.style.color = col.accent;
     panel.appendChild(title);
 
     const row       = document.createElement('div');
@@ -486,7 +503,7 @@ function buildClaimPanel() {
         slotDiv.appendChild(buildDomino(slot.domino));
 
         slotDiv.addEventListener('click', () => {
-            state = claimDomino(state, state.firstClaimer, i);
+            state = claimDomino(state, claimerId, i);
             pending = { row: null, col: null, orientation: 0 };
             render();
         });
@@ -523,8 +540,6 @@ function buildControls(activeId) {
         pending = { row: null, col: null, orientation: 0 };
         if (state.players.every(p => p.hasPlaced)) {
             state = advanceRound(state);
-        } else {
-            pendingEndTurn = true;
         }
         render();
     });
@@ -533,34 +548,6 @@ function buildControls(activeId) {
     return panel;
 }
 
-// ─── End-turn handoff screen ─────────────────────────────────────────────────
-
-/**
- * Shown after one player places and before the other player's turn begins.
- * Hides both boards so the next player can take the device privately.
- * @param {number} nextPlayerId
- * @returns {HTMLElement}
- */
-function buildEndTurnScreen(nextPlayerId) {
-    const screen       = document.createElement('div');
-    screen.className   = 'end-turn-screen';
-
-    const msg       = document.createElement('p');
-    msg.textContent = `Pass the device to ${playerNames[nextPlayerId]}`;
-    screen.appendChild(msg);
-
-    const btn       = document.createElement('button');
-    btn.className   = 'btn--active';
-    btn.textContent = `Start ${playerNames[nextPlayerId]}'s turn`;
-    btn.addEventListener('click', () => {
-        pendingEndTurn = false;
-        pending = { row: null, col: null, orientation: 0 };
-        render();
-    });
-    screen.appendChild(btn);
-
-    return screen;
-}
 
 // ─── Instructions screen ─────────────────────────────────────────────────────
 
@@ -590,7 +577,7 @@ function buildInstructionsScreen() {
         {
             icon: '🃏',
             heading: 'The Draft',
-            body: 'Each round two dominoes are on offer. Pick one. The lower the tile number, the sooner you go next round.',
+            body: 'Each round two dominoes are on offer. Pick one. The player who choese the lower number tile can choose first the next round.',
         },
         {
             icon: '🏗️',
@@ -692,6 +679,7 @@ function buildSetupScreen() {
     p1field.className = 'setup-field';
     const p1label       = document.createElement('label');
     p1label.textContent = 'Player 1 name';
+    p1label.style.color = PLAYER_COLORS[0].accent;
     const p1input   = document.createElement('input');
     p1input.type    = 'text';
     p1input.value   = playerNames[0];
@@ -714,6 +702,7 @@ function buildSetupScreen() {
     const p2field     = document.createElement('div');
     p2field.className = 'setup-field';
     const p2label     = document.createElement('label');
+    p2label.style.color = PLAYER_COLORS[1].accent;
     const p2input     = document.createElement('input');
     p2input.type      = 'text';
     p2field.appendChild(p2label);
@@ -741,9 +730,8 @@ function buildSetupScreen() {
         playerNames[1] = gameMode === 'vs-ai'
             ? 'Computer'
             : (p2input.value.trim() || 'Player 2');
-        state          = createInitialState();
-        pending        = { row: null, col: null, orientation: 0 };
-        pendingEndTurn = false;
+        state   = createInitialState();
+        pending = { row: null, col: null, orientation: 0 };
         appScreen      = 'game';
         render();
     });
@@ -788,13 +776,12 @@ function buildRoundTracker(effectivePhase) {
 /**
  * Wipes #app and rebuilds the whole UI from state and pending.
  *
- * Layout:
+ * Layout (game screen):
  *  1. Header — round, active player, New Game button
- *  2. Both grids side by side; score table next to each grid;
- *     each player's held domino shown below their grid
- *  3. Claim panel  (when players have no held domino and nextDraft has slots)
- *  4. Placing controls (orientation hint + Discard)
- *  5. Game-over banner
+ *  2. Two-column focus layout:
+ *       Left col  — opponent's small grid + score table (+ claim panel when needed)
+ *       Right col — active player's large grid + controls + score table
+ *  3. Game-over banner
  */
 function render() {
     const app = document.querySelector('#app');
@@ -807,11 +794,6 @@ function render() {
 
     if (appScreen === 'setup') {
         app.appendChild(buildSetupScreen());
-        return;
-    }
-
-    if (pendingEndTurn) {
-        app.appendChild(buildEndTurnScreen(activePlayerId(state)));
         return;
     }
 
@@ -867,6 +849,7 @@ function render() {
             wrapper.className = 'grid-wrapper';
             const label       = document.createElement('p');
             label.className   = 'player-label';
+            label.style.color = PLAYER_COLORS[player.id].accent;
             label.textContent = playerNames[player.id];
             wrapper.appendChild(label);
             const gridAndTable     = document.createElement('div');
@@ -898,73 +881,84 @@ function render() {
         return;
     }
 
-    // ── Claiming: normal side-by-side layout + claim panel ──
-    if (needsToClaim || effectivePhase === 'first-claim') {
-        const gridsRow     = document.createElement('div');
-        gridsRow.className = 'grids-row';
-        state.players.forEach(player => {
-            const isActive = player.id === activeId;
-            const wrapper     = document.createElement('div');
-            wrapper.className = 'grid-wrapper';
-            const label       = document.createElement('p');
-            label.className   = 'player-label';
-            label.textContent = playerNames[player.id];
-            wrapper.appendChild(label);
-            const gridAndTable     = document.createElement('div');
-            gridAndTable.className = 'grid-and-table';
-            gridAndTable.appendChild(buildGrid(player, isActive, activeId));
-            gridAndTable.appendChild(buildScoreTable(player));
-            wrapper.appendChild(gridAndTable);
-            gridsRow.appendChild(wrapper);
-        });
-        app.appendChild(gridsRow);
-        app.appendChild(buildClaimPanel());
-        return;
-    }
+    // ── Focus layout — used for first-claim, placing, and final-place ──
+    //
+    //  Left col  : "other" player's small grid + score table + claim panel (when needed)
+    //  Right col : active / claiming player's grid + controls
+    //
+    // In first-claim the right player is the firstClaimer; their grid is normal-size
+    // (no interaction needed). In placing/final-place the right player places on a
+    // large grid.
 
-    // ── Placing / final-place: focus layout ──
-    const activePlayer   = state.players.find(p => p.id === activeId);
-    const opponentPlayer = state.players.find(p => p.id !== activeId);
+    const isFirstClaim = effectivePhase === 'first-claim';
+
+    // Decide which player goes on which side
+    const rightId     = isFirstClaim ? state.firstClaimer : activeId;
+    const leftId      = 1 - rightId;
+    const rightPlayer = state.players.find(p => p.id === rightId);
+    const leftPlayer  = state.players.find(p => p.id === leftId);
 
     const layout     = document.createElement('div');
     layout.className = 'layout--placing';
 
-    // Opponent panel — small grid on the left
+    // ── Left column ──
+    const leftCol     = document.createElement('div');
+    leftCol.className = 'layout__left-col';
+
     const opponentPanel     = document.createElement('div');
     opponentPanel.className = 'opponent-panel';
+
     const oppLabel       = document.createElement('p');
     oppLabel.className   = 'player-label';
-    oppLabel.textContent =
-        `${playerNames[opponentPlayer.id]} — ${scoreGrid(opponentPlayer.grid)} pts`;
+    oppLabel.style.color = PLAYER_COLORS[leftId].accent;
+    oppLabel.textContent = isFirstClaim
+        ? playerNames[leftId]
+        : `${playerNames[leftId]} — ${scoreGrid(leftPlayer.grid)} pts`;
     opponentPanel.appendChild(oppLabel);
-    opponentPanel.appendChild(buildGrid(opponentPlayer, false, activeId, 'small'));
-    if (opponentPlayer.claimedDomino) {
+    opponentPanel.appendChild(buildGrid(leftPlayer, false, rightId, 'small'));
+
+    if (!isFirstClaim && leftPlayer.claimedDomino) {
         const waitLabel       = document.createElement('p');
         waitLabel.className   = 'hold-label';
         waitLabel.textContent = '⏳ Waiting to place:';
         opponentPanel.appendChild(waitLabel);
-        opponentPanel.appendChild(buildDomino(opponentPlayer.claimedDomino));
+        opponentPanel.appendChild(buildDomino(leftPlayer.claimedDomino));
     }
-    opponentPanel.appendChild(buildScoreTable(opponentPlayer));
-    layout.appendChild(opponentPanel);
+    opponentPanel.appendChild(buildScoreTable(leftPlayer));
+    leftCol.appendChild(opponentPanel);
 
-    // Active panel — large grid on the right
+    // Claim panel goes in the left column, below the smaller grid
+    if (isFirstClaim || needsToClaim) {
+        leftCol.appendChild(buildClaimPanel(state.firstClaimer));
+    }
+
+    layout.appendChild(leftCol);
+
+    // ── Right column ──
     const activePanel     = document.createElement('div');
     activePanel.className = 'active-panel';
+
     const actLabel       = document.createElement('p');
     actLabel.className   = 'player-label';
-    actLabel.textContent = `${playerNames[activeId]} — Your turn`;
+    actLabel.style.color = PLAYER_COLORS[rightId].accent;
+    actLabel.textContent = isFirstClaim
+        ? `${playerNames[rightId]} — choose a domino`
+        : `${playerNames[rightId]} — Your turn`;
     activePanel.appendChild(actLabel);
-    activePanel.appendChild(buildGrid(activePlayer, true, activeId, 'large'));
-    if (activePlayer.claimedDomino) {
+
+    const rightGridSize = isFirstClaim ? 'normal' : 'large';
+    activePanel.appendChild(buildGrid(rightPlayer, !isFirstClaim, rightId, rightGridSize));
+
+    if (!isFirstClaim && rightPlayer.claimedDomino) {
         const holdLabel       = document.createElement('p');
         holdLabel.className   = 'hold-label';
         holdLabel.textContent = '▶ Hover to place, right-click to rotate:';
         activePanel.appendChild(holdLabel);
-        activePanel.appendChild(buildDomino(activePlayer.claimedDomino));
-        activePanel.appendChild(buildControls(activeId));
+        activePanel.appendChild(buildDomino(rightPlayer.claimedDomino));
+        activePanel.appendChild(buildControls(rightId));
     }
-    activePanel.appendChild(buildScoreTable(activePlayer));
+    activePanel.appendChild(buildScoreTable(rightPlayer));
+
     layout.appendChild(activePanel);
     app.appendChild(layout);
 }
