@@ -4,7 +4,7 @@
     },
     "source": {
         "include": [
-            "web-app/Module.js"
+            "web-app/game-module1.js"
         ],
         "includePattern": "\\.js$",
         "excludePattern": "(node_modules/|docs)"

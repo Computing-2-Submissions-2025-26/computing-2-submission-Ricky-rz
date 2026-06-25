@@ -18,11 +18,11 @@ import {
     scoreGrid,
     isValidPlacement,
     findLegalPlacements,
-} from './game-module1.js';
+} from './Module.js';
 
 // ─── Module-level mutable state ───────────────────────────────────────────────
 
-/** @type {import('./game-module1.js').GameState} */
+/** @type {import('./Module.js').GameState} */
 let state = createInitialState();
 
 /**
@@ -47,7 +47,7 @@ let pendingEndTurn = false;
 
 // ─── Terrain display maps ─────────────────────────────────────────────────────
 
-/** @type {Record<import('./game-module1.js').Terrain, string>} */
+/** @type {Record<import('./Module.js').Terrain, string>} */
 const TERRAIN_BG = {
     empty:  '#ddd9c4',
     castle: '#9e9e9e',
@@ -59,7 +59,7 @@ const TERRAIN_BG = {
     mine:   '#546e7a',
 };
 
-/** @type {Record<import('./game-module1.js').Terrain, string>} */
+/** @type {Record<import('./Module.js').Terrain, string>} */
 const TERRAIN_ICON = {
     empty:  '',
     castle: '🏰',
@@ -79,7 +79,7 @@ const DARK_TERRAINS = new Set(['forest', 'water', 'swamp', 'mine']);
 /**
  * Returns the id of the player who should act next.
  * Uses find-by-id so it is correct even when claimDomino reorders the array.
- * @param {import('./game-module1.js').GameState} st
+ * @param {import('./Module.js').GameState} st
  * @returns {number}
  */
 function activePlayerId(st) {
@@ -111,7 +111,7 @@ function secondTile(row, col, orientation) {
 /**
  * Returns per-region score breakdown for a grid.
  * Each entry is one connected component of same terrain.
- * @param {import('./game-module1.js').Grid} grid
+ * @param {import('./Module.js').Grid} grid
  * @returns {{ terrain: string, size: number, crowns: number, score: number }[]}
  */
 function getScoreBreakdown(grid) {
@@ -193,7 +193,7 @@ function normalizeState() {
  * Returns the 5×5 bounding box around all placed tiles (including castle).
  * Starts at the castle, expands to cover every non-empty cell,
  * then pads the smaller dimension until the box is exactly 5×5.
- * @param {import('./game-module1.js').Grid} grid
+ * @param {import('./Module.js').Grid} grid
  * @returns {{ minR: number, maxR: number, minC: number, maxC: number }}
  */
 function getKingdomBounds(grid) {
@@ -234,7 +234,7 @@ function getKingdomBounds(grid) {
  *   - Right click → rotate orientation +1
  *   - Mouse leaving the grid clears the preview
  *
- * @param {import('./game-module1.js').Player} player
+ * @param {import('./Module.js').Player} player
  * @param {boolean} isActive
  * @param {number} activeId
  * @param {'normal'|'large'|'small'} [size]
@@ -368,7 +368,7 @@ function buildGrid(player, isActive, activeId, size = 'normal') {
 /**
  * Builds a live score breakdown table for a player.
  * Each row is one connected region; shows terrain, tiles, crowns, and score.
- * @param {import('./game-module1.js').Player} player
+ * @param {import('./Module.js').Player} player
  * @returns {HTMLElement}
  */
 function buildScoreTable(player) {
@@ -439,7 +439,7 @@ function buildScoreTable(player) {
 
 /**
  * Builds a domino preview strip: two half-cell divs side by side.
- * @param {import('./game-module1.js').Domino} domino
+ * @param {import('./Module.js').Domino} domino
  * @returns {HTMLElement}
  */
 function buildDomino(domino) {

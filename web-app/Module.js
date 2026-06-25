@@ -191,7 +191,7 @@ function makeGrid() {
 
 /**
  * takes (domino, placement) and returns two row, col and half
- * @returns {{row: number, col: number, half: "left"|"right"}[]}
+ * @returns {Array.<{row: number, col: number, half: Cell}>}
  * @param {Domino} domino
  * @param {number} orientation
  * @param {Grid} grid
@@ -213,7 +213,7 @@ function makeGrid() {
 
 /**
 * Checks if both cells are within the 9x9 grid.
-* @param {{row: number, col: number}[]} cells
+* @param {Array.<{row: number, col: number}>} cells
 * @returns {boolean}
 */
 function cellsInBounds(cells) {
@@ -227,7 +227,7 @@ function cellsInBounds(cells) {
 /**
  * checks if cells are empty
  * @param {Grid} grid
- * @param {{row: number, col: number}[]} cells
+ * @param {Array.<{row: number, col: number}>} cells
  * @returns {boolean}
  */
 function cellsAreEmpty(grid, cells) {
@@ -242,7 +242,7 @@ function cellsAreEmpty(grid, cells) {
 * castle or to an existing cell of matching terrain.
 * The other half of the same domino is excluded from adjacency checks.
 * @param {Grid} grid
-* @param {{row: number, col: number, half: Cell}[]} cells
+* @param {Array.<{row: number, col: number, half: Cell}>} cells
 * @returns {boolean}
 */
 function touchesMatchingTerrain(grid, cells) {
@@ -269,7 +269,7 @@ function touchesMatchingTerrain(grid, cells) {
 /**
    * Checks if all occupied cells fit within a 5x5 bounding box.
    * @param {Grid} grid
-   * @param {{row: number, col: number}[]} cells
+   * @param {Array.<{row: number, col: number}>} cells
    * @returns {boolean}
    */
 function fitsInKingdom(grid, cells) {
@@ -369,7 +369,7 @@ export function isValidPlacement(grid, domino, row, col, orientation) {
 * @param {Grid} grid
 * @param {Domino} domino
 * @param {number} [orientation] 0-3; omit to chek all orientations
-* @returns {{row: number, col: number, orientation: number}[]}
+* @returns {Array.<{row: number, col: number, orientation: number}>}
 */
 export function findLegalPlacements(grid, domino, orientation) {
     const orientations = orientation !== undefined
