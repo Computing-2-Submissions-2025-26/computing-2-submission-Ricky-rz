@@ -4,6 +4,8 @@
  * All exported functions return new state objects and never mutate their inputs.
  */
 
+/*jslint browser, for, long, unordered*/
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const GRID_SIZE    = 9;  // 9×9 board so a 5×5 kingdom fits anywhere around the castle
@@ -154,23 +156,26 @@ const ALL_DOMINOES = Object.freeze([
     { id: 45, number: 45, left: { terrain: "mine",   crowns: 2 }, right: { terrain: "wheat",  crowns: 0 } },
     { id: 46, number: 46, left: { terrain: "swamp",  crowns: 0 }, right: { terrain: "mine",   crowns: 2 } },
     { id: 47, number: 47, left: { terrain: "swamp",  crowns: 0 }, right: { terrain: "mine",   crowns: 2 } },
-    { id: 48, number: 48, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "mine",   crowns: 3 } },
+    { id: 48, number: 48, left: { terrain: "wheat",  crowns: 0 }, right: { terrain: "mine",   crowns: 3 } }
 ]);
 
 // ─── Private helpers ───────────────────────────────────────────────────────────
 
 /**
- * Fisher-Yates shuffle; will iterate backwards through the input array 
- * And swap it with a random element
+ * Fisher-Yates shuffle; iterates backwards through the array
+ * and swaps each element with a random earlier element.
  * @template T
  * @param {T[]} arr
  * @returns {T[]} A new array with the same elements as `arr` but in random order
  */
-function shuffle(arr){
+function shuffle(arr) {
     const a = [...arr];
-    for(let i = a.length - 1; i > 0; i--){
-        const j = Math.floor(Math.random()*(i + 1));
+    let i = a.length - 1;
+    let j;
+    while (i > 0) {
+        j = Math.floor(Math.random() * (i + 1));
         [a[i], a[j]] = [a[j], a[i]];
+        i -= 1;
     }
     return a;
 }
@@ -196,19 +201,18 @@ function makeGrid() {
  * @param {number} orientation - 0=right, 1=down, 2=left, 3=up
  * @returns {Array.<{row: number, col: number, half: Cell}>}
  */
- function getPlacedCells(domino, row, col, orientation) {
-      let r, c;
-
-      if (orientation === 0) { r = row;   c = col+1; }
-      if (orientation === 1) { r = row+1; c = col;   }
-      if (orientation === 2) { r = row;   c = col-1; }
-      if (orientation === 3) { r = row-1; c = col;   }
-
-      return [
-          { row: row, col: col, half: domino.left },
-          { row: r,  col: c,  half: domino.right }
-      ];
-  }
+function getPlacedCells(domino, row, col, orientation) {
+    let r;
+    let c;
+    if (orientation === 0) { r = row;       c = col + 1; }
+    if (orientation === 1) { r = row + 1;   c = col;     }
+    if (orientation === 2) { r = row;       c = col - 1; }
+    if (orientation === 3) { r = row - 1;   c = col;     }
+    return [
+        {row, col, half: domino.left},
+        {row: r, col: c, half: domino.right}
+    ];
+}
 
 /**
 * Checks if both cells are within the 9x9 grid.
@@ -216,11 +220,10 @@ function makeGrid() {
 * @returns {boolean}
 */
 function cellsInBounds(cells) {
-    return cells.every(
-        ({row, col}) =>
-            row >= 0 && row < GRID_SIZE &&
-            col >= 0 && col < GRID_SIZE
-    );
+    return cells.every(function ({row, col}) {
+        return row >= 0 && row < GRID_SIZE &&
+            col >= 0 && col < GRID_SIZE;
+    });
 }
 
 /**
@@ -230,10 +233,9 @@ function cellsInBounds(cells) {
  * @returns {boolean}
  */
 function cellsAreEmpty(grid, cells) {
-    return cells.every(
-        ({row, col}) =>
-            grid[row][col].terrain === "empty"
-    )
+    return cells.every(function ({row, col}) {
+        return grid[row][col].terrain === "empty";
+    });
 }
 
 /**
@@ -245,19 +247,21 @@ function cellsAreEmpty(grid, cells) {
 * @returns {boolean}
 */
 function touchesMatchingTerrain(grid, cells) {
-    return cells.some(({ row, col, half }) => {
+    return cells.some(function ({row, col, half}) {
         const neighbours = [
-            { row: row - 1, col },
-            { row: row + 1, col },
-            { row, col: col - 1 },
-            { row, col: col + 1 },
+            {row: row - 1, col},
+            {row: row + 1, col},
+            {row, col: col - 1},
+            {row, col: col + 1}
         ];
-        return neighbours.some(({ row: r, col: c }) => {
+        return neighbours.some(function ({row: r, col: c}) {
             if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) {
-                return false;// Out of bounds
+                return false;
             }
-            if (cells.some(cell => cell.row === r && cell.col === c)) {
-                return false;// Skip the other half of the same domino
+            if (cells.some(function (cell) {
+                return cell.row === r && cell.col === c;
+            })) {
+                return false;
             }
             const t = grid[r][c].terrain;
             return t === "castle" || t === half.terrain;
@@ -272,17 +276,22 @@ function touchesMatchingTerrain(grid, cells) {
    * @returns {boolean}
    */
 function fitsInKingdom(grid, cells) {
-    const occupied = [...cells.map(({ row, col }) => ({ row, col }))];
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-        if(grid[r][c].terrain !== "empty"){
-            occupied.push({row: r, col: c});
+    const occupied = [...cells.map(function ({row, col}) {
+        return {row, col};
+    })];
+    let r;
+    let c;
+    for (r = 0; r < GRID_SIZE; r += 1) {
+        for (c = 0; c < GRID_SIZE; c += 1) {
+            if (grid[r][c].terrain !== "empty") {
+                occupied.push({row: r, col: c});
             }
-    }}
-    const row_min = Math.min(...occupied.map(({row}) => row));
-    const row_max = Math.max(...occupied.map(({row}) => row));
-    const col_min = Math.min(...occupied.map(({col}) => col));
-    const col_max = Math.max(...occupied.map(({col}) => col));
+        }
+    }
+    const row_min = Math.min(...occupied.map(function ({row}) { return row; }));
+    const row_max = Math.max(...occupied.map(function ({row}) { return row; }));
+    const col_min = Math.min(...occupied.map(function ({col}) { return col; }));
+    const col_max = Math.max(...occupied.map(function ({col}) { return col; }));
     return (row_max - row_min) < KINGDOM_SIZE &&
         (col_max - col_min) < KINGDOM_SIZE;
 }
@@ -302,23 +311,19 @@ function floodFillRegion(grid, startRow, startCol, visited) {
     const stack   = [[startRow, startCol]];
     while (stack.length > 0) {
         const [row, col] = stack.pop();
-
-          // 1. bounds check — must be first
-        if (row < 0 || row >= GRID_SIZE ||
-             col < 0 || col >= GRID_SIZE) { continue; }
-          // 2. already visited?
-        if (visited[row][col]) { continue; }
-          // 3. wrong terrain?
-        if (grid[row][col].terrain !== terrain) { continue; }
-
-          // mark, collect, push neighbours
-        visited[row][col] = true;
-        region.push(grid[row][col]);
-
-        stack.push([row - 1, col]);
-        stack.push([row + 1, col]);
-        stack.push([row, col - 1]);
-        stack.push([row, col + 1]);
+        if (
+            row >= 0 && row < GRID_SIZE &&
+            col >= 0 && col < GRID_SIZE &&
+            !visited[row][col] &&
+            grid[row][col].terrain === terrain
+        ) {
+            visited[row][col] = true;
+            region.push(grid[row][col]);
+            stack.push([row - 1, col]);
+            stack.push([row + 1, col]);
+            stack.push([row, col - 1]);
+            stack.push([row, col + 1]);
+        }
     }
     return region;
 }
@@ -331,19 +336,24 @@ function floodFillRegion(grid, startRow, startCol, visited) {
 * @returns {number}
 */
 export function scoreGrid(grid) {
-    const visited = Array.from({length: GRID_SIZE}, () =>
-        Array.from({length: GRID_SIZE}, () => false))
+    const visited = Array.from({length: GRID_SIZE}, function () {
+        return Array.from({length: GRID_SIZE}, function () { return false; });
+    });
     let score = 0;
-    for (let row = 0; row < GRID_SIZE; row++) {
-        for (let col = 0; col < GRID_SIZE; col++) {
-            if (visited[row][col]) { continue; }
-            const terrain = grid[row][col].terrain;
-            if (terrain === "empty" || terrain === "castle") { continue; }
-            const region = floodFillRegion(grid, row, col, visited);
-            const crowns = region.reduce(
-                (sum, cell) => sum + cell.crowns, 0
-            );
-            score += region.length * crowns;
+    let row;
+    let col;
+    for (row = 0; row < GRID_SIZE; row += 1) {
+        for (col = 0; col < GRID_SIZE; col += 1) {
+            if (!visited[row][col]) {
+                const terrain = grid[row][col].terrain;
+                if (terrain !== "empty" && terrain !== "castle") {
+                    const region = floodFillRegion(grid, row, col, visited);
+                    const crowns = region.reduce(
+                        function (sum, cell) { return sum + cell.crowns; }, 0
+                    );
+                    score += region.length * crowns;
+                }
+            }
         }
     }
     return score;
@@ -356,7 +366,7 @@ export function scoreGrid(grid) {
  * @param {number} row
  * @param {number} col
  * @param {number} orientation 0,1,2,3 for orientation and left or right for half
- * @return {boolean}
+ * @returns {boolean}
  */
 export function isValidPlacement(grid, domino, row, col, orientation) {
     const cells = getPlacedCells(domino, row, col, orientation);
@@ -374,18 +384,19 @@ export function isValidPlacement(grid, domino, row, col, orientation) {
 * @returns {Array.<{row: number, col: number, orientation: number}>}
 */
 export function findLegalPlacements(grid, domino, orientation) {
-    const orientations = orientation !== undefined
-        ?[orientation]
-        :[0, 1, 2, 3];
-    const results = []
-    for (let r = 0; r < GRID_SIZE; r++) {
-        for(let c = 0; c < GRID_SIZE; c++) {
-            for (const o of orientations) {
-                if(isValidPlacement(grid, domino, r, c, o)) {
-                    results.push({row: r, col: c, orientation: o
-                    });
+    const orientations = (orientation !== undefined)
+        ? [orientation]
+        : [0, 1, 2, 3];
+    const results = [];
+    let r;
+    let c;
+    for (r = 0; r < GRID_SIZE; r += 1) {
+        for (c = 0; c < GRID_SIZE; c += 1) {
+            orientations.forEach(function (o) {
+                if (isValidPlacement(grid, domino, r, c, o)) {
+                    results.push({row: r, col: c, orientation: o});
                 }
-            }
+            });
         }
     }
     return results;
@@ -398,11 +409,15 @@ export function findLegalPlacements(grid, domino, orientation) {
 * @returns {{ slots: DraftSlot[], remain: Domino[] }}
 */
 export function getNextDraft(deck) {
-    const drawn = deck.slice(0, DRAFT_SIZE).sort((a, b) => a.number - b.number);
+    const drawn = deck.slice(0, DRAFT_SIZE).sort(function (a, b) {
+        return a.number - b.number;
+    });
     const remain = deck.slice(DRAFT_SIZE);
-    const slots = drawn.map(domino => ({domino, claimedBy: null}));
+    const slots = drawn.map(function (domino) {
+        return {domino, claimedBy: null};
+    });
     return {slots, remain};
-  }
+}
 
 /**
 * Builds the starting GameState for a 2-player game.
@@ -438,25 +453,24 @@ export function createInitialState() {
 export function claimDomino(state, playerId, slotIndex) {
     const myDomino = state.nextDraft[slotIndex].domino;
     const theirdomino = state.nextDraft[1 - slotIndex].domino;
-    const nextFirstCLaim = myDomino.number < theirdomino.number
+    const nextFirstClaimer = (myDomino.number < theirdomino.number)
         ? playerId
         : 1 - playerId;
     return {
-        players: state.players.map(p =>
-            p.id === playerId
+        players: state.players.map(function (p) {
+            return (p.id === playerId)
                 ? {...p, claimedDomino: myDomino,    hasPlaced: false}
-                : {...p, claimedDomino: theirdomino, hasPlaced: false}
-        ),
+                : {...p, claimedDomino: theirdomino, hasPlaced: false};
+        }),
         currentDraft: [],
         nextDraft: [],
         deck: state.deck,
         havePlaced: false,
         phase: "placing",
         round: state.round,
-        firstClaimer: nextFirstCLaim
-    }
-
-  }
+        firstClaimer: nextFirstClaimer
+    };
+}
 
 /**
    * Places the active player's held domino onto their grid (or discards it if
@@ -468,7 +482,7 @@ export function claimDomino(state, playerId, slotIndex) {
    * @returns {GameState}
    */
 export function placeDomino(state, playerId, placement) {
-    const player = state.players.find(p => p.id === playerId);
+    const player = state.players.find(function (p) { return p.id === playerId; });
     const domino = player.claimedDomino;
     const grid   = player.grid;
 
@@ -480,28 +494,30 @@ export function placeDomino(state, playerId, placement) {
     if (placement === null) {
         newGrid = grid;
     } else {
-        const { row, col, orientation } = placement;
+        const {row, col, orientation} = placement;
         if (!isValidPlacement(grid, domino, row, col, orientation)) {
             throw new Error("Invalid placement");
         }
         const cells = getPlacedCells(domino, row, col, orientation);
-        newGrid = grid.map((rowArr, r) =>
-            rowArr.map((cell, c) => {
-                const placed = cells.find(p => p.row === r && p.col === c);
-                return placed ? placed.half : cell;
-            })
-        );
+        newGrid = grid.map(function (rowArr, r) {
+            return rowArr.map(function (cell, c) {
+                const placed = cells.find(function (p) {
+                    return p.row === r && p.col === c;
+                });
+                return (placed ? placed.half : cell);
+            });
+        });
     }
 
     return {
-          ...state,
-          players: state.players.map(p =>
-              p.id === playerId
-                  ? { ...p, grid: newGrid, claimedDomino: null, hasPlaced: true}
-                  : p
-          ),
-      };
-  }
+        ...state,
+        players: state.players.map(function (p) {
+            return (p.id === playerId)
+                ? {...p, grid: newGrid, claimedDomino: null, hasPlaced: true}
+                : p;
+        })
+    };
+}
 
 /**
 * Advances the game to the next round after both players have placed.
@@ -511,28 +527,30 @@ export function placeDomino(state, playerId, placement) {
 * @returns {GameState}
 */
 export function advanceRound(state) {
-    const bothPlaced = state.players.every(p => p.hasPlaced);
+    const bothPlaced = state.players.every(function (p) { return p.hasPlaced; });
 
     if (state.phase === "final-place" && bothPlaced) {
-        return {...state, phase: "game-over" };
+        return {...state, phase: "game-over"};
     }
     if (state.deck.length === 0) {
         return {
             ...state,
-            players: state.players.map(p => ({...p, hasPlaced: false})),
+            players: state.players.map(function (p) {
+                return {...p, hasPlaced: false};
+            }),
             phase: "final-place"
         };
-    }
-    else {
+    } else {
         const {slots, remain} = getNextDraft(state.deck);
-        const firstClaimer = state.firstClaimer;
-    return {
-        players: state.players.map(p => ({...p, hasPlaced: false, claimedDomino: null})),
-        currentDraft: state.nextDraft,
-        nextDraft: slots,
-        deck: remain,
-        round: state.round + 1,
-        firstClaimer: firstClaimer,
+        return {
+            players: state.players.map(function (p) {
+                return {...p, hasPlaced: false, claimedDomino: null};
+            }),
+            currentDraft: state.nextDraft,
+            nextDraft: slots,
+            deck: remain,
+            round: state.round + 1,
+            firstClaimer: state.firstClaimer,
         phase: "placing"
     }}
 }
