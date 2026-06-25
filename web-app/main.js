@@ -472,46 +472,109 @@ function buildDomino(domino) {
 }
 
 /**
- * Builds the claim panel tinted with the claiming player's colour.
- * Clicking a slot calls claimDomino for claimerId; the other player
- * is auto-assigned the remaining slot.
- * @param {number} claimerId
+ * Builds the thin side panel shown to the right of the active player's grid.
+ *
+ * isClaiming=true  — stacked clickable slots for firstClaimer to pick from.
+ * isClaiming=false — stacked player status slots (coloured, empty once placed);
+ *                    when isActivePlacing also shows orientation hint + Discard.
+ * @param {boolean} isClaiming
+ * @param {number}  rightId
+ * @param {boolean} isActivePlacing
  * @returns {HTMLElement}
  */
-function buildClaimPanel(claimerId) {
-    const col         = PLAYER_COLORS[claimerId];
-    const panel       = document.createElement('div');
-    panel.className   = 'claim-panel';
-    panel.style.background  = col.muted;
-    panel.style.borderColor = col.border;
+function buildSidePanel(isClaiming, rightId, isActivePlacing) {
+    const panel     = document.createElement('div');
+    panel.className = 'side-panel';
 
     const title       = document.createElement('p');
-    title.textContent = `${playerNames[claimerId]}: pick a domino`;
-    title.style.color = col.accent;
-    panel.appendChild(title);
+    title.className   = 'side-panel__title';
 
-    const row       = document.createElement('div');
-    row.className   = 'slots-row';
+    const slots       = document.createElement('div');
+    slots.className   = 'side-panel__slots';
 
-    state.nextDraft.forEach((slot, i) => {
-        const slotDiv     = document.createElement('div');
-        slotDiv.className = 'draft-slot';
+    if (isClaiming) {
+        const claimerId = state.firstClaimer;
+        const col       = PLAYER_COLORS[claimerId];
+        title.textContent = `${playerNames[claimerId]}: pick`;
+        title.style.color = col.accent;
 
-        const num       = document.createElement('p');
-        num.textContent = `#${slot.domino.number}`;
-        slotDiv.appendChild(num);
-        slotDiv.appendChild(buildDomino(slot.domino));
+        state.nextDraft.forEach((slot, i) => {
+            const slotDiv     = document.createElement('div');
+            slotDiv.className = 'side-slot side-slot--pick';
+            slotDiv.style.background  = col.muted;
+            slotDiv.style.borderColor = col.border;
 
-        slotDiv.addEventListener('click', () => {
-            state = claimDomino(state, claimerId, i);
-            pending = { row: null, col: null, orientation: 0 };
-            render();
+            const lbl       = document.createElement('span');
+            lbl.className   = 'side-slot__label';
+            lbl.textContent = `#${slot.domino.number}`;
+            slotDiv.appendChild(lbl);
+            slotDiv.appendChild(buildDomino(slot.domino));
+
+            slotDiv.addEventListener('click', () => {
+                state = claimDomino(state, claimerId, i);
+                pending = { row: null, col: null, orientation: 0 };
+                render();
+            });
+
+            slots.appendChild(slotDiv);
+        });
+    } else {
+        title.textContent = 'This round';
+
+        // Fixed order: player 0 always first, player 1 second
+        [0, 1].forEach(id => {
+            const player = state.players.find(p => p.id === id);
+            const col    = PLAYER_COLORS[id];
+
+            const slotDiv     = document.createElement('div');
+            slotDiv.className = 'side-slot';
+            slotDiv.style.background  = col.muted;
+            slotDiv.style.borderColor = col.border;
+
+            const lbl       = document.createElement('span');
+            lbl.className   = 'side-slot__label';
+            lbl.textContent = playerNames[id];
+            lbl.style.color = col.accent;
+            slotDiv.appendChild(lbl);
+
+            if (player.claimedDomino) {
+                slotDiv.appendChild(buildDomino(player.claimedDomino));
+            } else {
+                const empty     = document.createElement('div');
+                empty.className = 'side-slot__empty';
+                slotDiv.appendChild(empty);
+            }
+
+            slots.appendChild(slotDiv);
         });
 
-        row.appendChild(slotDiv);
-    });
+        if (isActivePlacing) {
+            const arrows = ['→', '↓', '←', '↑'];
 
-    panel.appendChild(row);
+            const hint       = document.createElement('p');
+            hint.className   = 'side-panel__hint';
+            hint.innerHTML   =
+                `<span class="side-panel__arrow">${arrows[pending.orientation]}</span>` +
+                `Left: place<br>Right: rotate`;
+            slots.appendChild(hint);
+
+            const discardBtn       = document.createElement('button');
+            discardBtn.className   = 'side-panel__discard';
+            discardBtn.textContent = 'Discard';
+            discardBtn.addEventListener('click', () => {
+                state = placeDomino(state, rightId, null);
+                pending = { row: null, col: null, orientation: 0 };
+                if (state.players.every(p => p.hasPlaced)) {
+                    state = advanceRound(state);
+                }
+                render();
+            });
+            slots.appendChild(discardBtn);
+        }
+    }
+
+    panel.appendChild(title);
+    panel.appendChild(slots);
     return panel;
 }
 
@@ -917,20 +980,8 @@ function render() {
     opponentPanel.appendChild(oppLabel);
     opponentPanel.appendChild(buildGrid(leftPlayer, false, rightId, 'small'));
 
-    if (!isFirstClaim && leftPlayer.claimedDomino) {
-        const waitLabel       = document.createElement('p');
-        waitLabel.className   = 'hold-label';
-        waitLabel.textContent = '⏳ Waiting to place:';
-        opponentPanel.appendChild(waitLabel);
-        opponentPanel.appendChild(buildDomino(leftPlayer.claimedDomino));
-    }
     opponentPanel.appendChild(buildScoreTable(leftPlayer));
     leftCol.appendChild(opponentPanel);
-
-    // Claim panel goes in the left column, below the smaller grid
-    if (isFirstClaim || needsToClaim) {
-        leftCol.appendChild(buildClaimPanel(state.firstClaimer));
-    }
 
     layout.appendChild(leftCol);
 
@@ -941,22 +992,22 @@ function render() {
     const actLabel       = document.createElement('p');
     actLabel.className   = 'player-label';
     actLabel.style.color = PLAYER_COLORS[rightId].accent;
-    actLabel.textContent = isFirstClaim
+    const isClaiming     = isFirstClaim || needsToClaim;
+    actLabel.textContent = isClaiming
         ? `${playerNames[rightId]} — choose a domino`
         : `${playerNames[rightId]} — Your turn`;
     activePanel.appendChild(actLabel);
 
-    const rightGridSize = isFirstClaim ? 'normal' : 'large';
-    activePanel.appendChild(buildGrid(rightPlayer, !isFirstClaim, rightId, rightGridSize));
+    const isActivePlacing = !isClaiming && rightPlayer.claimedDomino !== null;
+    const rightGridSize   = isActivePlacing ? 'large' : 'normal';
 
-    if (!isFirstClaim && rightPlayer.claimedDomino) {
-        const holdLabel       = document.createElement('p');
-        holdLabel.className   = 'hold-label';
-        holdLabel.textContent = '▶ Hover to place, right-click to rotate:';
-        activePanel.appendChild(holdLabel);
-        activePanel.appendChild(buildDomino(rightPlayer.claimedDomino));
-        activePanel.appendChild(buildControls(rightId));
-    }
+    // Grid and side panel sit side by side; score table spans full width below
+    const gridAndSide     = document.createElement('div');
+    gridAndSide.className = 'grid-and-side';
+    gridAndSide.appendChild(buildGrid(rightPlayer, isActivePlacing, rightId, rightGridSize));
+    gridAndSide.appendChild(buildSidePanel(isClaiming, rightId, isActivePlacing));
+    activePanel.appendChild(gridAndSide);
+
     activePanel.appendChild(buildScoreTable(rightPlayer));
 
     layout.appendChild(activePanel);

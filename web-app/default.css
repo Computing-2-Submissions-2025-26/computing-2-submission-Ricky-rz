@@ -178,6 +178,7 @@ body {
 
 .domino {
     display: flex;
+    width: 84px;
     border: 2px solid #524f80;
     border-radius: 5px;
     overflow: hidden;
@@ -197,7 +198,7 @@ body {
 /* ── Claim panel ── */
 
 .claim-panel {
-    padding: 14px 16px;
+    padding: 14px 14px;
     background: #23213a;
     border: 1.5px solid #38365a;
     border-radius: 10px;
@@ -221,7 +222,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    padding: 12px 16px;
+    padding: 12px 12px;
     background: #2d2b48;
     border: 2px solid #38365a;
     border-radius: 8px;
@@ -244,6 +245,107 @@ body {
 .draft-slot--selected {
     background: #3a3760;
     transform: translateY(-3px);
+}
+
+/* ── Grid + side panel row ── */
+
+.grid-and-side {
+    display:     flex;
+    gap:         12px;
+    align-items: flex-start;
+}
+
+/* ── Thin side panel (to the right of the active grid) ── */
+
+.side-panel {
+    width:          130px;
+    flex-shrink:    0;
+    display:        flex;
+    flex-direction: column;
+    gap:            10px;
+    padding:        12px;
+    background:     #23213a;
+    border:         1px solid #38365a;
+    border-radius:  10px;
+}
+
+.side-panel__title {
+    font-weight:    bold;
+    font-size:      0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color:          #9997b0;
+}
+
+.side-panel__slots {
+    display:        flex;
+    flex-direction: column;
+    gap:            8px;
+}
+
+.side-slot {
+    display:        flex;
+    flex-direction: column;
+    gap:            5px;
+    padding:        8px 10px;
+    border:         1.5px solid #38365a;
+    border-radius:  8px;
+    transition:     border-color 0.12s, background 0.12s;
+}
+
+.side-slot--pick {
+    cursor: pointer;
+}
+
+.side-slot--pick:hover {
+    border-color: #f5c400;
+    filter:       brightness(1.15);
+}
+
+.side-slot__label {
+    font-size:   0.75rem;
+    font-weight: bold;
+    color:       #9997b0;
+}
+
+.side-slot__empty {
+    width:         84px;
+    height:        42px;
+    background:    #14121f;
+    border:        1px dashed #38365a;
+    border-radius: 4px;
+}
+
+.side-panel__hint {
+    font-size:   0.74rem;
+    color:       #9997b0;
+    line-height: 1.6;
+    margin-top:  4px;
+}
+
+.side-panel__arrow {
+    display:     block;
+    font-size:   1.1rem;
+    font-weight: bold;
+    color:       #e8e4f8;
+    margin-bottom: 3px;
+}
+
+.side-panel__discard {
+    width:      100%;
+    margin-top: 2px;
+    font-size:  0.85rem;
+    padding:    6px 8px;
+}
+
+/* ── Draft slot empty placeholder (legacy, kept for backward compat) ── */
+
+.draft-slot__empty {
+    width:         84px;
+    height:        42px;
+    background:    #14121f;
+    border:        1px dashed #38365a;
+    border-radius: 4px;
 }
 
 /* ── Controls ── */
