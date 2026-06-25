@@ -266,9 +266,9 @@ function getPlacedCells(domino, row, col, orientation) {
 
 /**
  * Checks if both cells are within the 9×9 grid.
- * @param {Array.<{row: number, col: number}>} cells
- * @returns {boolean}
- */
+* @param {Array.<{row: number, col: number}>} cells
+* @returns {boolean}
+*/
 function cellsInBounds(cells) {
     return cells.every(function ({row, col}) {
         return row >= 0 && row < GRID_SIZE &&
@@ -291,11 +291,11 @@ function cellsAreEmpty(grid, cells) {
 /**
  * Checks if at least one half-tile is adjacent to the castle or
  * to an existing cell of matching terrain.
- * The other half of the same domino is excluded from adjacency checks.
- * @param {Grid} grid
- * @param {Array.<{row: number, col: number, half: Cell}>} cells
- * @returns {boolean}
- */
+* The other half of the same domino is excluded from adjacency checks.
+* @param {Grid} grid
+* @param {Array.<{row: number, col: number, half: Cell}>} cells
+* @returns {boolean}
+*/
 function touchesMatchingTerrain(grid, cells) {
     return cells.some(function ({row, col, half}) {
         const neighbours = [
@@ -321,10 +321,10 @@ function touchesMatchingTerrain(grid, cells) {
 
 /**
  * Checks if all occupied cells fit within a 5×5 bounding box.
- * @param {Grid} grid
- * @param {Array.<{row: number, col: number}>} cells
- * @returns {boolean}
- */
+   * @param {Grid} grid
+   * @param {Array.<{row: number, col: number}>} cells
+   * @returns {boolean}
+   */
 function fitsInKingdom(grid, cells) {
     const occupied = [...cells.map(function ({row, col}) {
         return {row, col};
@@ -365,12 +365,12 @@ function floodFillRegion(grid, startRow, startCol, visited) {
             !visited[row][col] &&
             grid[row][col].terrain === terrain
         ) {
-            visited[row][col] = true;
-            region.push(grid[row][col]);
-            stack.push([row - 1, col]);
-            stack.push([row + 1, col]);
-            stack.push([row, col - 1]);
-            stack.push([row, col + 1]);
+        visited[row][col] = true;
+        region.push(grid[row][col]);
+        stack.push([row - 1, col]);
+        stack.push([row + 1, col]);
+        stack.push([row, col - 1]);
+        stack.push([row, col + 1]);
         }
     }
     return region;
@@ -380,9 +380,9 @@ function floodFillRegion(grid, startRow, startCol, visited) {
 
 /**
  * Scores a grid using flood-fill: Σ(region size × crowns in region).
- * @param {Grid} grid
- * @returns {number}
- */
+* @param {Grid} grid
+* @returns {number}
+*/
 export function scoreGrid(grid) {
     const visited = Array.from({length: GRID_SIZE}, function () {
         return Array.from({length: GRID_SIZE}, function () {
@@ -395,13 +395,13 @@ export function scoreGrid(grid) {
     for (row = 0; row < GRID_SIZE; row += 1) {
         for (col = 0; col < GRID_SIZE; col += 1) {
             if (!visited[row][col]) {
-                const terrain = grid[row][col].terrain;
+            const terrain = grid[row][col].terrain;
                 if (terrain !== "empty" && terrain !== "castle") {
-                    const region = floodFillRegion(grid, row, col, visited);
+            const region = floodFillRegion(grid, row, col, visited);
                     const crowns = region.reduce(function (sum, cell) {
                         return sum + cell.crowns;
                     }, 0);
-                    score += region.length * crowns;
+            score += region.length * crowns;
                 }
             }
         }
@@ -430,10 +430,10 @@ export function isValidPlacement(grid, domino, row, col, orientation) {
 /**
  * Returns every legal placement for a domino on a grid.
  * @param {Grid}   grid
- * @param {Domino} domino
+* @param {Domino} domino
  * @param {number} [orientation] - 0-3; omit to check all orientations
- * @returns {Array.<{row: number, col: number, orientation: number}>}
- */
+* @returns {Array.<{row: number, col: number, orientation: number}>}
+*/
 export function findLegalPlacements(grid, domino, orientation) {
     const orientations = (
         orientation !== undefined
@@ -457,10 +457,10 @@ export function findLegalPlacements(grid, domino, orientation) {
 
 /**
  * Draws DRAFT_SIZE dominoes from the deck, sorts by number ascending,
- * and wraps each in a DraftSlot with claimedBy: null.
- * @param {Domino[]} deck
- * @returns {{ slots: DraftSlot[], remain: Domino[] }}
- */
+* and wraps each in a DraftSlot with claimedBy: null.
+* @param {Domino[]} deck
+* @returns {{ slots: DraftSlot[], remain: Domino[] }}
+*/
 export function getNextDraft(deck) {
     const drawn = deck.slice(0, DRAFT_SIZE).sort(function (a, b) {
         return a.number - b.number;
@@ -470,13 +470,13 @@ export function getNextDraft(deck) {
         return {domino, claimedBy: null};
     });
     return {slots, remain};
-}
+  }
 
 /**
- * Builds the starting GameState for a 2-player game.
+* Builds the starting GameState for a 2-player game.
  * Shuffles the full deck, picks 24 tiles, draws the first draft.
- * @returns {GameState}
- */
+* @returns {GameState}
+*/
 export function createInitialState() {
     const deck = shuffle(ALL_DOMINOES).slice(0, 24);
     const {slots, remain} = getNextDraft(deck);
@@ -498,11 +498,11 @@ export function createInitialState() {
 /**
  * Active player claims a slot; the other player is auto-assigned.
  * Sets firstClaimer to whoever took the lower-numbered tile.
- * @param {GameState} state
+* @param {GameState} state
  * @param {number}    playerId
  * @param {number}    slotIndex - 0 or 1
- * @returns {GameState}
- */
+* @returns {GameState}
+*/
 export function claimDomino(state, playerId, slotIndex) {
     const myDomino    = state.nextDraft[slotIndex].domino;
     const theirDomino = state.nextDraft[1 - slotIndex].domino;
@@ -525,16 +525,16 @@ export function claimDomino(state, playerId, slotIndex) {
         round: state.round,
         firstClaimer: nextFirstClaimer
     };
-}
+  }
 
 /**
  * Places the active player's held domino onto their grid, or discards
  * it when placement is null. Throws if no domino held or placement invalid.
- * @param {GameState} state
+   * @param {GameState} state
  * @param {number}    playerId
- * @param {{row: number, col: number, orientation: number}|null} placement
- * @returns {GameState}
- */
+   * @param {{row: number, col: number, orientation: number}|null} placement
+   * @returns {GameState}
+   */
 export function placeDomino(state, playerId, placement) {
     const player = state.players.find(function (p) {
         return p.id === playerId;
@@ -566,23 +566,23 @@ export function placeDomino(state, playerId, placement) {
     }
 
     return {
-        ...state,
+          ...state,
         players: state.players.map(function (p) {
             return (p.id === playerId)
                 ? {...p, grid: newGrid, claimedDomino: null, hasPlaced: true}
                 : p;
         })
-    };
-}
+      };
+  }
 
 /**
  * Advances the game after both players have placed.
- * Draws a fresh nextDraft, resets hasPlaced, increments round.
+* Draws a fresh nextDraft, resets hasPlaced, increments round.
  * Transitions to "final-place" when the deck empties,
  * then to "game-over" once both have placed in final-place.
- * @param {GameState} state
- * @returns {GameState}
- */
+* @param {GameState} state
+* @returns {GameState}
+*/
 export function advanceRound(state) {
     const bothPlaced = state.players.every(function (p) {
         return p.hasPlaced;
@@ -600,16 +600,16 @@ export function advanceRound(state) {
             phase: "final-place"
         };
     }
-    const {slots, remain} = getNextDraft(state.deck);
+        const {slots, remain} = getNextDraft(state.deck);
     return {
-        players: state.players.map(function (p) {
-            return {...p, hasPlaced: false, claimedDomino: null};
-        }),
+            players: state.players.map(function (p) {
+                return {...p, hasPlaced: false, claimedDomino: null};
+            }),
         currentDraft: state.nextDraft,
         nextDraft: slots,
         deck: remain,
         round: state.round + 1,
-        firstClaimer: state.firstClaimer,
+            firstClaimer: state.firstClaimer,
         phase: "placing"
-    };
-}
+        };
+    }
